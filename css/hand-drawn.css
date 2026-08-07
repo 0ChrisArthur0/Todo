@@ -1,0 +1,611 @@
+/* ============================================================
+   手绘黑白便利贴墙 — 清单 Todo App v2
+   纯黑白 · 钢笔速写 · 冷淡文艺 · 便利贴自由排布
+   ============================================================ */
+
+/* --- 字体体系 --- */
+.font-title {
+  font-family: 'Zeyada', 'Ma Shan Zheng', cursive;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+}
+
+.font-body {
+  font-family: 'Patrick Hand', 'Caveat', 'Ma Shan Zheng', cursive;
+  font-weight: 400;
+}
+
+body[data-lang="zh"] .font-title {
+  font-family: 'Ma Shan Zheng', 'Zeyada', cursive;
+}
+
+body[data-lang="zh"] .font-body {
+  font-family: 'Ma Shan Zheng', 'Patrick Hand', cursive;
+  font-size: 1.02em;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
+
+/* --- 背景水印 --- */
+.bg-watermark {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bg-img {
+  position: absolute;
+  object-fit: cover;
+  filter: grayscale(100%) contrast(1.1);
+  opacity: 0.06;
+}
+
+.bg-img-primary {
+  top: -5%;
+  right: -10%;
+  width: 70%;
+  max-width: 900px;
+  transform: rotate(-2deg);
+}
+
+.bg-img-secondary {
+  bottom: 5%;
+  left: -8%;
+  width: 55%;
+  max-width: 700px;
+  transform: rotate(1deg);
+  opacity: 0.04;
+}
+
+/* --- 右上角控制栏 --- */
+.top-controls {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.control-sketch {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  padding: 0.4rem 0.65rem;
+  transform: rotate(-0.5deg);
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.control-sketch:hover {
+  transform: translateY(-1px) rotate(0deg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.lang-select {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: black;
+}
+
+.sound-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem;
+}
+
+.sound-btn[data-enabled="false"] .sound-wave {
+  opacity: 0.2;
+}
+
+.sound-btn[data-enabled="false"]::after {
+  content: '';
+  position: absolute;
+  width: 1px;
+  height: 18px;
+  background: black;
+  transform: rotate(45deg);
+  opacity: 0.5;
+}
+
+.sound-btn {
+  position: relative;
+}
+
+/* --- 手绘抖动边框（sketch-frame） --- */
+.sketch-frame {
+  position: relative;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(6px);
+}
+
+.sketch-frame::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border: 1.5px solid transparent;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect x='2' y='3' width='196' height='194' fill='none' stroke='%23000' stroke-width='1.2' stroke-dasharray='3 2' rx='1' transform='rotate(0.3 100 100)'/%3E%3C/svg%3E")
+    stretch;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.45;
+  animation: border-wobble 8s ease-in-out infinite alternate;
+}
+
+@keyframes border-wobble {
+  0%   { transform: rotate(-0.2deg) scale(1); opacity: 0.4; }
+  50%  { transform: rotate(0.15deg) scale(1.002); opacity: 0.5; }
+  100% { transform: rotate(-0.1deg) scale(0.998); opacity: 0.42; }
+}
+
+/* --- 语言切换淡入淡出 --- */
+#app.lang-transition {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+#app.lang-visible {
+  opacity: 1;
+}
+
+/* --- 输入框手绘边框舒展 --- */
+.input-sketch-wrap {
+  position: relative;
+}
+
+.input-sketch-border {
+  position: relative;
+}
+
+.input-sketch-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid black;
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.input-sketch-border:focus-within::before,
+.input-sketch-border.expanded::before {
+  transform: scaleX(1) rotate(-0.2deg);
+  opacity: 0.5;
+}
+
+.input-sketch-border::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 8%;
+  width: 84%;
+  height: 1px;
+  background: black;
+  opacity: 0;
+  transform: scaleX(0);
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s;
+}
+
+.input-sketch-border:focus-within::after {
+  opacity: 0.2;
+  transform: scaleX(1);
+}
+
+/* --- 手绘按钮 --- */
+.btn-sketch {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  color: black;
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  transform: rotate(-0.3deg);
+}
+
+.btn-sketch:hover {
+  transform: translateY(-1px) rotate(0deg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.btn-sketch-outline {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  color: black;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.25s ease;
+  transform: rotate(0.2deg);
+}
+
+.btn-sketch-outline:hover {
+  border-color: rgba(0, 0, 0, 0.6);
+  transform: translateY(-1px);
+}
+
+/* --- 折叠面板 --- */
+.panel-header {
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+}
+
+.panel-header[data-collapsed] .chevron {
+  transform: rotate(-90deg);
+}
+
+.panel-body {
+  overflow: hidden;
+  max-height: 600px;
+  transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.35s ease,
+              padding 0.35s ease;
+  opacity: 1;
+}
+
+.panel-body.collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* --- 便利贴墙 --- */
+.sticky-wall {
+  min-height: calc(100vh - 320px);
+  min-height: calc(100dvh - 320px);
+  position: relative;
+}
+
+.wall-empty {
+  display: none;
+}
+
+.wall-empty.visible {
+  display: flex;
+}
+
+/* --- 便利贴卡片 --- */
+.sticky-note {
+  position: absolute;
+  width: 168px;
+  min-height: 120px;
+  padding: 0.85rem 0.75rem 0.75rem;
+  background: rgba(255, 255, 255, 0.92);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: box-shadow 0.3s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  z-index: 10;
+}
+
+.sticky-note::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1.2px solid rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  transform: rotate(0.3deg);
+}
+
+.sticky-note::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 0 0 2px 2px;
+}
+
+.sticky-note:hover:not(.dragging):not(.discarding) {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+  transform: translateY(-3px) rotate(0deg) !important;
+}
+
+.sticky-note.dragging {
+  cursor: grabbing;
+  opacity: 0.85;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.15s;
+}
+
+.sticky-note.done-note {
+  opacity: 0.7;
+}
+
+.sticky-note.done-note::before {
+  border-style: dashed;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.sticky-note.done-note .task-text {
+  text-decoration: line-through;
+  text-decoration-color: rgba(0, 0, 0, 0.3);
+}
+
+/* 丢弃动画 */
+.sticky-note.discarding {
+  animation: discard-fall 0.7s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+  pointer-events: none;
+}
+
+@keyframes discard-fall {
+  0%   { opacity: 1; transform: rotate(0deg) translateY(0) scale(1); }
+  40%  { opacity: 0.7; transform: rotate(15deg) translateY(40px) scale(0.95); }
+  100% { opacity: 0; transform: rotate(45deg) translateY(120px) scale(0.6); }
+}
+
+/* --- 勾选框 + 手绘对勾 --- */
+.task-checkbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transform: rotate(-1deg);
+  transition: border-color 0.2s;
+  padding: 0;
+}
+
+.task-checkbox:hover {
+  border-color: black;
+}
+
+.task-checkbox svg {
+  position: absolute;
+  inset: -2px;
+  width: calc(100% + 4px);
+  height: calc(100% + 4px);
+  pointer-events: none;
+}
+
+.task-checkbox .check-path {
+  fill: none;
+  stroke: black;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  transition: stroke-dashoffset 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.task-checkbox.checked .check-path {
+  stroke-dashoffset: 0;
+}
+
+.task-content {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0.15rem;
+}
+
+.task-text {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.task-note-wrap {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.35s ease, opacity 0.3s ease, margin 0.3s ease;
+}
+
+.task-note-wrap.open {
+  max-height: 60px;
+  opacity: 1;
+  margin-top: 0.4rem;
+}
+
+.task-note-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 0.2rem 0;
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.5);
+  outline: none;
+}
+
+.task-note-display {
+  font-size: 0.68rem;
+  color: rgba(0, 0, 0, 0.38);
+  margin-top: 0.3rem;
+  font-style: italic;
+}
+
+.sticky-note.long-press-active {
+  transform: scale(0.97) !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.sticky-note-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+/* --- 底部放置区 --- */
+.drop-zones {
+  pointer-events: none;
+}
+
+.drop-zone {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.6rem 1rem;
+  min-width: 80px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s;
+  transform: rotate(-0.3deg);
+}
+
+.drop-zone:nth-child(2) { transform: rotate(0.2deg); }
+.drop-zone:nth-child(3) { transform: rotate(-0.5deg); }
+
+.drop-zone.zone-active {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px) scale(1.03);
+}
+
+.zone-discard.zone-active {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25);
+}
+
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.3rem;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  font-size: 0.6rem;
+}
+
+.clear-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.15rem 0.3rem;
+  margin-top: 0.15rem;
+}
+
+.clear-btn:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* --- 统计 --- */
+.stats-divider {
+  height: 1px;
+  background: black;
+  opacity: 0.08;
+}
+
+.stat-num {
+  display: block;
+}
+
+/* --- 弹窗 --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(3px);
+  padding: 1rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+.modal-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-overlay.hidden {
+  display: flex;
+}
+
+.modal-box {
+  width: 100%;
+  max-width: 360px;
+  transform: translateY(8px) scale(0.98);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.modal-overlay.visible .modal-box {
+  transform: translateY(0) scale(1);
+}
+
+.modal-sketch-border {
+  padding: 1.75rem;
+  background: white;
+}
+
+.modal-input {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  opacity: 0.6 !important;
+}
+
+/* --- 响应式 --- */
+@media (max-width: 640px) {
+  .sticky-note {
+    width: 148px;
+    min-height: 105px;
+    padding: 0.7rem 0.6rem;
+  }
+
+  .drop-zone {
+    min-width: 68px;
+    padding: 0.5rem 0.65rem;
+  }
+
+  .top-controls {
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+
+  .font-title {
+    font-size: 1.75rem !important;
+  }
+
+  .bg-img-primary {
+    width: 90%;
+    opacity: 0.05;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

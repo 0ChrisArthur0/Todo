@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>清单 · 便利贴墙</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Patrick+Hand&family=Zeyada&family=Caveat:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/hand-drawn.css" />
+</head>
+<body class="min-h-screen bg-white text-black antialiased overflow-x-hidden">
+
+  <!-- 低透明度黑白景物速写背景 -->
+  <div class="bg-watermark" aria-hidden="true">
+    <img src="assets/bg-morning.png" alt="" class="bg-img bg-img-primary" />
+    <img src="assets/bg-sketches.png" alt="" class="bg-img bg-img-secondary" />
+  </div>
+
+  <!-- 右上角控制栏：语言 + 音效 -->
+  <div class="top-controls">
+    <label class="control-sketch lang-select-wrap">
+      <span class="sr-only" data-i18n="langLabel">语言</span>
+      <select id="lang-select" class="lang-select font-body" aria-label="Language">
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+      </select>
+    </label>
+    <button type="button" id="sound-toggle" class="control-sketch sound-btn font-body" data-enabled="true" aria-pressed="true">
+      <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2">
+        <path d="M3 8h3l4-3v10l-4-3H3V8z" stroke-linejoin="round"/>
+        <path class="sound-wave" d="M13 7c1 1 1 5 0 6M15 5c2 2 2 8 0 10" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <div id="app" class="relative z-10 lang-visible">
+
+    <!-- ① 顶部：标题 + 新增（可折叠） -->
+    <header class="header-panel sketch-frame mx-4 mt-4 sm:mx-8 sm:mt-6" data-panel="header">
+      <button type="button" class="panel-header flex w-full items-center justify-between px-5 py-3" data-collapse="header">
+        <div class="flex items-center gap-3">
+          <svg class="chevron h-3.5 w-3.5 opacity-40 transition-transform duration-300" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+            <path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div>
+            <h1 class="font-title text-3xl sm:text-4xl" data-i18n="title">清单</h1>
+            <p class="font-body text-xs opacity-40 tracking-widest" data-i18n="subtitle">便利贴墙</p>
+          </div>
+        </div>
+      </button>
+      <div class="panel-body px-5 pb-5" data-body="header">
+        <form id="add-form" class="input-sketch-wrap mt-2">
+          <div class="input-sketch-border">
+            <input
+              id="new-task-input"
+              type="text"
+              data-i18n-placeholder="placeholder"
+              placeholder="写下新事项…"
+              autocomplete="off"
+              maxlength="200"
+              class="input-sketch font-body w-full bg-transparent px-4 py-3 text-sm outline-none placeholder:opacity-30"
+            />
+          </div>
+          <button type="submit" class="btn-sketch font-body mt-3 px-5 py-2 text-xs tracking-widest" data-i18n="add">添加</button>
+        </form>
+      </div>
+    </header>
+
+    <!-- ② 便利贴墙 -->
+    <main id="sticky-wall" class="sticky-wall relative mx-4 my-6 sm:mx-8">
+      <p id="wall-empty" class="wall-empty font-body pointer-events-none absolute inset-0 flex items-center justify-center text-sm opacity-25" data-i18n="emptyTodo">暂无待办，添一张便签吧</p>
+    </main>
+
+    <!-- ③ 底部放置区 -->
+    <div class="drop-zones fixed bottom-0 left-0 right-0 z-30 flex items-end justify-center gap-3 px-4 pb-4 sm:gap-5 sm:px-8 sm:pb-6">
+      <div id="todo-zone" class="drop-zone sketch-frame zone-todo" data-zone="todo">
+        <span class="font-body text-[10px] tracking-widest opacity-50" data-i18n="todoZone">待办区</span>
+        <span id="todo-count" class="count-badge font-body">0</span>
+      </div>
+      <div id="done-zone" class="drop-zone sketch-frame zone-done" data-zone="done">
+        <span class="font-body text-[10px] tracking-widest opacity-50" data-i18n="doneZone">收纳区</span>
+        <span id="done-count" class="count-badge font-body">0</span>
+        <button type="button" id="clear-done-btn" class="clear-btn font-body text-[9px] opacity-40 hover:opacity-70" data-i18n="clear">清空</button>
+      </div>
+      <div id="discard-zone" class="drop-zone sketch-frame zone-discard" data-zone="discard">
+        <span class="font-body text-[10px] tracking-widest opacity-50" data-i18n="discardZone">丢弃区</span>
+        <span class="font-body text-[9px] opacity-30" data-i18n="discardHint">拖入丢弃</span>
+      </div>
+    </div>
+
+    <!-- ④ 底部统计（可折叠） -->
+    <footer class="stats-panel sketch-frame mx-4 mb-28 sm:mx-8 sm:mb-32" data-panel="stats">
+      <button type="button" class="panel-header flex w-full items-center justify-center gap-2 px-5 py-3" data-collapse="stats">
+        <svg class="chevron h-3 w-3 opacity-40 transition-transform duration-300" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="panel-body px-5 pb-5" data-body="stats">
+        <div class="stats-divider mb-4"></div>
+        <div class="flex flex-wrap items-center justify-center gap-8 sm:gap-14">
+          <div class="stat-item text-center">
+            <span id="stat-total" class="stat-num font-title text-2xl">0</span>
+            <span class="stat-label font-body mt-1 block text-[10px] opacity-40 tracking-widest" data-i18n="statTotal">总任务</span>
+          </div>
+          <div class="stat-sep hidden h-7 w-px bg-black/10 sm:block"></div>
+          <div class="stat-item text-center">
+            <span id="stat-done" class="stat-num font-title text-2xl">0</span>
+            <span class="stat-label font-body mt-1 block text-[10px] opacity-40 tracking-widest" data-i18n="statDone">已完成</span>
+          </div>
+          <div class="stat-sep hidden h-7 w-px bg-black/10 sm:block"></div>
+          <div class="stat-item text-center">
+            <span id="stat-rate" class="stat-num font-title text-2xl">0%</span>
+            <span class="stat-label font-body mt-1 block text-[10px] opacity-40 tracking-widest" data-i18n="statRate">完成率</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- 编辑/删除弹窗（长按唤起） -->
+  <div id="action-modal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-labelledby="modal-title">
+      <div class="modal-sketch-border sketch-frame">
+        <h3 id="modal-title" class="font-title mb-4 text-lg" data-i18n="modalEdit">编辑事项</h3>
+        <input id="modal-edit-input" type="text" class="modal-input font-body mb-5 w-full bg-transparent px-3 py-2 text-sm outline-none" />
+        <div class="flex gap-3">
+          <button type="button" id="modal-save-btn" class="btn-sketch font-body flex-1 py-2 text-xs" data-i18n="modalSave">保存</button>
+          <button type="button" id="modal-delete-btn" class="btn-sketch-outline font-body flex-1 py-2 text-xs" data-i18n="modalDelete">删除</button>
+        </div>
+        <button type="button" id="modal-close-btn" class="modal-close font-body mt-4 w-full py-1 text-[10px] opacity-30 tracking-widest" data-i18n="modalCancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 清空确认弹窗 -->
+  <div id="confirm-modal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-box" role="alertdialog" aria-labelledby="confirm-title">
+      <div class="modal-sketch-border sketch-frame">
+        <h3 id="confirm-title" class="font-title mb-2 text-lg" data-i18n="confirmClearTitle">清空已完成</h3>
+        <p class="font-body mb-6 text-xs leading-relaxed opacity-50" data-i18n="confirmClearMsg">确定要清空所有已完成事项吗？此操作不可撤销。</p>
+        <div class="flex gap-3">
+          <button type="button" id="confirm-yes-btn" class="btn-sketch font-body flex-1 py-2 text-xs" data-i18n="confirmYes">确认</button>
+          <button type="button" id="confirm-no-btn" class="btn-sketch-outline font-body flex-1 py-2 text-xs" data-i18n="confirmNo">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/sticky-wall.js"></script>
+  <script src="js/interactions.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
