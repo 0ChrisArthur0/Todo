@@ -28,13 +28,13 @@ h1.font-title {
 }
 
 body[data-lang="zh"] .font-title {
-  font-family: 'ChenYuluoyan', 'Long Cang', 'Ma Shan Zheng', cursive !important;
+  font-family: 'ChenYuluoyan', 'Long Cang', 'Ma Shan Zheng', cursive;
   font-weight: 100;
   letter-spacing: 0.04em;
 }
 
 body[data-lang="zh"] .font-body {
-  font-family: 'ChenYuluoyan', 'Long Cang', 'Ma Shan Zheng', cursive !important;
+  font-family: 'ChenYuluoyan', 'Long Cang', 'Ma Shan Zheng', cursive;
   font-weight: 100;
   font-size: 1.05em;
 }
@@ -54,16 +54,14 @@ body[data-lang="ja"] .font-body {
 body[data-lang="en"] .font-body,
 body[data-lang="es"] .font-body,
 body[data-lang="fr"] .font-body {
-  font-family: 'ChenYuluoyan', 'Nothing You Could Do', 'Caveat', 'Patrick Hand', cursive !important;
-  font-weight: 100;
+  /* 英文用手写体在前，中文CJK字符自动fallback到辰宇落雁体 */
+  font-family: 'Nothing You Could Do', 'Caveat', 'Patrick Hand', 'ChenYuluoyan', 'Long Cang', 'Ma Shan Zheng', cursive;
+  font-weight: 400;
   font-size: 1.08em;
   line-height: 1.5;
 }
 
-/* 便签内文本：特异性更高（.sticky-note .task-text.font-body），需定向覆盖 */
-body[data-lang="zh"] .sticky-note .task-text.font-body,
-body[data-lang="zh"] .sticky-note .task-note-input.font-body,
-body[data-lang="zh"] .sticky-note .task-note-display.font-body,
+/* 便签内文本（en/fr/es）：保持相同逻辑——英文手写体 + CJK 自动fallback辰宇落雁 */
 body[data-lang="en"] .sticky-note .task-text.font-body,
 body[data-lang="es"] .sticky-note .task-text.font-body,
 body[data-lang="fr"] .sticky-note .task-text.font-body,
@@ -73,7 +71,15 @@ body[data-lang="fr"] .sticky-note .task-note-input.font-body,
 body[data-lang="en"] .sticky-note .task-note-display.font-body,
 body[data-lang="es"] .sticky-note .task-note-display.font-body,
 body[data-lang="fr"] .sticky-note .task-note-display.font-body {
-  font-family: 'ChenYuluoyan', 'Nothing You Could Do', 'Caveat', 'Patrick Hand', cursive !important;
+  font-family: 'Nothing You Could Do', 'Caveat', 'Patrick Hand', 'ChenYuluoyan', 'Long Cang', 'Ma Shan Zheng', cursive;
+  font-weight: 400;
+}
+
+/* 便签内文本（zh）：沿用原中文系统逻辑 */
+body[data-lang="zh"] .sticky-note .task-text.font-body,
+body[data-lang="zh"] .sticky-note .task-note-input.font-body,
+body[data-lang="zh"] .sticky-note .task-note-display.font-body {
+  font-family: 'ChenYuluoyan', 'Long Cang', 'Ma Shan Zheng', cursive;
   font-weight: 100;
 }
 
