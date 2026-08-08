@@ -7,7 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Long+Cang&family=Klee+One:wght@400;600&family=Ma+Shan+Zheng&family=Patrick+Hand&family=Zeyada&family=Caveat:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Long+Cang&family=Klee+One:wght@400;600&family=Ma+Shan+Zheng&family=Patrick+Hand&family=Zeyada&family=Caveat:wght@400;500&family=Nothing+You+Could+Do&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/hand-drawn.css" />
 </head>
 <body class="min-h-screen bg-white text-black antialiased overflow-x-hidden">
@@ -52,6 +52,53 @@
         <option value="es">Español</option>
       </select>
     </label>
+    <div class="bg-switcher-wrap">
+      <button type="button" id="bg-toggle" class="control-sketch sound-btn font-body" aria-expanded="false" aria-label="Change background" data-i18n-title="background" title="背景">
+        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M3 5.5 A1.5 1.5 0 0 1 4.5 4 H15.5 A1.5 1.5 0 0 1 17 5.5 V14.5 A1.5 1.5 0 0 1 15.5 16 H4.5 A1.5 1.5 0 0 1 3 14.5 Z" stroke-linejoin="round"/>
+          <circle cx="7.5" cy="9" r="1.2"/>
+          <path d="M4 14 L7.5 10 L10.5 13 L13 10.5 L16 14.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div id="bg-popup" class="bg-popup control-sketch" role="menu" aria-hidden="true">
+        <button type="button" class="bg-thumb" data-bg="default" role="menuitem" aria-label="Default paper">
+          <span class="bg-thumb-img bg-thumb-default"></span>
+          <span class="bg-thumb-label font-body" data-i18n-bg="default">米黄纸</span>
+        </button>
+        <button type="button" class="bg-thumb" data-bg="white" role="menuitem" aria-label="White paper">
+          <span class="bg-thumb-img bg-thumb-white"></span>
+          <span class="bg-thumb-label font-body" data-i18n-bg="white">米白纸</span>
+        </button>
+        <button type="button" class="bg-thumb" data-bg="purewhite" role="menuitem" aria-label="Pure white">
+          <span class="bg-thumb-img bg-thumb-purewhite"></span>
+          <span class="bg-thumb-label font-body" data-i18n-bg="purewhite">纯白纸</span>
+        </button>
+        <button type="button" class="bg-thumb" data-bg="whitecrumple" role="menuitem" aria-label="White crumpled">
+          <span class="bg-thumb-img bg-thumb-whitecrumple"></span>
+          <span class="bg-thumb-label font-body" data-i18n-bg="whitecrumple">白皱纸</span>
+        </button>
+        <button type="button" class="bg-thumb" data-bg="kraft" role="menuitem" aria-label="Kraft paper">
+          <span class="bg-thumb-img bg-thumb-kraft"></span>
+          <span class="bg-thumb-label font-body" data-i18n-bg="kraft">牛皮纸</span>
+        </button>
+        <button type="button" class="bg-thumb" data-bg="cork" role="menuitem" aria-label="Cork">
+          <span class="bg-thumb-img bg-thumb-cork"></span>
+          <span class="bg-thumb-label font-body" data-i18n-bg="cork">软木板</span>
+        </button>
+        <button type="button" class="bg-thumb" data-bg="osb" role="menuitem" aria-label="OSB wood">
+          <span class="bg-thumb-img bg-thumb-osb"></span>
+          <span class="bg-thumb-label font-body" data-i18n-bg="osb">欧松板</span>
+        </button>
+        <button type="button" class="bg-thumb" data-bg="damask" role="menuitem" aria-label="Damask">
+          <span class="bg-thumb-img bg-thumb-damask"></span>
+          <span class="bg-thumb-label font-body" data-i18n-bg="damask">大马士革</span>
+        </button>
+        <button type="button" class="bg-thumb" data-bg="dots" role="menuitem" aria-label="Dot grid">
+          <span class="bg-thumb-img bg-thumb-dots"></span>
+          <span class="bg-thumb-label font-body" data-i18n-bg="dots">网格点</span>
+        </button>
+      </div>
+    </div>
     <button type="button" id="sound-toggle" class="control-sketch sound-btn font-body" data-enabled="true" aria-pressed="true" data-i18n-title="soundOn">
       <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2">
         <path d="M3 8h3l4-3v10l-4-3H3V8z" stroke-linejoin="round"/>

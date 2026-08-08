@@ -216,19 +216,19 @@ const AudioFX = (() => {
     });
   }
 
-  /** 差异化场景音效（全纸张类，全柔和） */
+  /** 差异化场景音效（全纸张类，更柔和更克制 — 全部默认音量下调约 25~40%） */
   const sounds = {
-    add:      () => paperPlace(0.055),          // 添加新便签：放桌面+轻划
-    paper:    () => paperTouch(0.045),          // 点击便签：指触纸面
-    click:    () => paperTouch(0.04),           // 通用按键点击：轻触
-    discard:  () => thud(0.065),                // 丢入垃圾桶：落地+沙沙
-    complete: () => paperFold(0.055),           // 勾选完成 / 拖入收纳：对折
-    drop:     () => paperDrop(0.05),            // 跨区放下（todo/done 互拖）：闷放
-    delete:   () => paperTear(0.055),           // 删除：撕纸
-    lang:     () => paperTurn(0.048),           // 切换语言：翻页
+    add:      () => paperPlace(0.038),          // 添加新便签：放桌面+轻划（下调约 30%）
+    paper:    () => paperTouch(0.032),          // 点击便签：指触纸面（下调约 30%）
+    click:    () => paperTouch(0.028),          // 通用按键点击：轻触（下调约 30%）
+    discard:  () => thud(0.048),                // 丢入垃圾桶：落地+沙沙（下调约 26%）
+    complete: () => paperFold(0.04),            // 勾选完成 / 拖入收纳：对折（下调约 27%）
+    drop:     () => paperDrop(0.036),           // 跨区放下（todo/done 互拖）：闷放（下调约 28%）
+    delete:   () => paperTear(0.042),           // 删除：撕纸（下调约 24%）
+    lang:     () => paperTurn(0.035),           // 切换语言：翻页（下调约 27%）
     collapse: () => {                           // 折叠面板：小翻小折
-      paperTurn(0.038);
-      setTimeout(() => paperTouch(0.03), 140);
+      paperTurn(0.028);
+      setTimeout(() => paperTouch(0.022), 140);
     },
   };
 
@@ -299,85 +299,80 @@ const Music = (() => {
   let fadeTimer = null;
 
   const TRACKS = [
-    // 01 Ethereal — 五声琶音 + 双音 pad + LFO 呼吸
-    function ethereal(ac, out) {
+    // ————— 5 首舒缓柔和的纯音乐，单旋律 + 单弱底音，无雨声/无叠部 —————
+    //
+    // 01 · Gentle Sun — C 大调五声稀疏琶音 + 单 C2 底音
+    function gentleSun(ac, out) {
       const timers = [];
-      const pads = [];
-      // pad
-      [65.41, 98.00].forEach((f) => {
-        const osc = ac.createOscillator();
-        const g = ac.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = f;
-        g.gain.value = 0.18;
-        osc.connect(g); g.connect(out);
-        osc.start();
-        pads.push({ osc, g });
-      });
+      // 单底音 C2（极弱，呼吸式起伏）
+      const bass = ac.createOscillator();
+      const bG = ac.createGain();
+      bass.type = 'sine';
+      bass.frequency.value = 65.41;
+      bG.gain.value = 0;
+      bass.connect(bG); bG.connect(out);
+      const now0 = ac.currentTime;
+      bG.gain.linearRampToValueAtTime(0.045, now0 + 4);
+      bass.start();
       const lfo = ac.createOscillator();
       const lfoG = ac.createGain();
-      lfo.frequency.value = 0.07;
-      lfoG.gain.value = 0.055;
-      lfo.connect(lfoG);
-      pads.forEach(({ g }) => lfoG.connect(g.gain));
+      lfo.frequency.value = 0.04;
+      lfoG.gain.value = 0.015;
+      lfo.connect(lfoG); lfoG.connect(bG.gain);
       lfo.start();
-      // arp
+      // 稀疏五声琶音：每次 1 个音，长衰减
       const step = () => {
         if (!out) return;
         const f = PENTATONIC[Math.floor(Math.random() * PENTATONIC.length)];
+        const osc = ac.createOscillator();
+        const g = ac.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = f;
+        const now = ac.currentTime;
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(0.05, now + 0.9);
+        g.gain.linearRampToValueAtTime(0.03, now + 2.6);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 5.6);
+        osc.connect(g); g.connect(out);
+        osc.start(now); osc.stop(now + 5.7);
+        timers.push(setTimeout(step, 2800 + Math.random() * 2600));
+      };
+      step();
+      return () => {
+        timers.forEach(clearTimeout);
+        try { bass.stop(); } catch { /* noop */ }
+        try { lfo.stop(); } catch { /* noop */ }
+      };
+    },
+
+    // 02 · Soft Breeze — A 小调柔和旋律（音阶 A C D E G） + 单 A2 底音
+    function softBreeze(ac, out) {
+      const timers = [];
+      const AM_SCALE = [220.00, 261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33];
+      const bass = ac.createOscillator();
+      const bG = ac.createGain();
+      bass.type = 'sine';
+      bass.frequency.value = 110.0; // A2
+      bG.gain.value = 0;
+      bass.connect(bG); bG.connect(out);
+      const now0 = ac.currentTime;
+      bG.gain.linearRampToValueAtTime(0.04, now0 + 3.6);
+      bass.start();
+      const step = () => {
+        if (!out) return;
+        const f = AM_SCALE[Math.floor(Math.random() * AM_SCALE.length)];
         const osc = ac.createOscillator();
         const g = ac.createGain();
         osc.type = 'sine';
         osc.frequency.value = f;
         const now = ac.currentTime;
         g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(0.11, now + 0.9);
-        g.gain.linearRampToValueAtTime(0.06, now + 1.9);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 3.9);
+        g.gain.linearRampToValueAtTime(0.06, now + 1.1);
+        g.gain.linearRampToValueAtTime(0.04, now + 3);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 6);
         osc.connect(g); g.connect(out);
-        osc.start(now); osc.stop(now + 4.0);
-        timers.push(setTimeout(step, 2300 + Math.random() * 1800));
-      };
-      step();
-      return () => {
-        timers.forEach(clearTimeout);
-        pads.forEach(({ osc }) => { try { osc.stop(); } catch { /* noop */ } });
-        try { lfo.stop(); } catch { /* noop */ }
-      };
-    },
-
-    // 02 Minimal Piano — C 大调慢速单音，柔和触键（短 attack + 长释放）
-    function piano(ac, out) {
-      const timers = [];
-      // 一个很低的底音 C2 给支撑
-      const bass = ac.createOscillator();
-      const bg = ac.createGain();
-      bass.type = 'triangle';
-      bass.frequency.value = 65.41;
-      bg.gain.value = 0.05;
-      bass.connect(bg); bg.connect(out);
-      bass.start();
-
-      const step = () => {
-        if (!out) return;
-        // 选 1–2 个 C 大调音符（八度随机）
-        const pickCount = Math.random() < 0.35 ? 2 : 1;
-        for (let i = 0; i < pickCount; i++) {
-          const base = C_MAJOR[Math.floor(Math.random() * C_MAJOR.length)];
-          const octave = Math.random() < 0.55 ? 1 : 2;
-          const f = base * octave;
-          const osc = ac.createOscillator();
-          const g = ac.createGain();
-          osc.type = 'triangle';
-          osc.frequency.value = f;
-          const now = ac.currentTime;
-          g.gain.setValueAtTime(0, now);
-          g.gain.linearRampToValueAtTime(0.07, now + 0.025);
-          g.gain.exponentialRampToValueAtTime(0.001, now + 4.8);
-          osc.connect(g); g.connect(out);
-          osc.start(now); osc.stop(now + 5.0);
-        }
-        timers.push(setTimeout(step, 2600 + Math.random() * 2200));
+        osc.start(now); osc.stop(now + 6.1);
+        timers.push(setTimeout(step, 3200 + Math.random() * 2600));
       };
       step();
       return () => {
@@ -386,158 +381,126 @@ const Music = (() => {
       };
     },
 
-    // 03 Gentle Rain — 柔和粉噪雨点 + 偶发高音风铃
-    function rain(ac, out) {
+    // 03 · Warm Paper — F 大调三和弦单音 + 单 F2 底音（柔和、温暖）
+    function warmPaper(ac, out) {
       const timers = [];
-      // 低通低音量粉红噪音
-      const bufFrames = ac.sampleRate * 6;
-      const buffer = ac.createBuffer(1, bufFrames, ac.sampleRate);
-      const data = buffer.getChannelData(0);
-      let b0 = 0, b1 = 0, b2 = 0;
-      for (let i = 0; i < bufFrames; i++) {
-        const white = Math.random() * 2 - 1;
-        b0 = 0.99765 * b0 + white * 0.0990460;
-        b1 = 0.96300 * b1 + white * 0.2965164;
-        b2 = 0.57000 * b2 + white * 1.0526913;
-        data[i] = (b0 + b1 + b2 + white * 0.1848) * 0.11;
-      }
-      const rain = ac.createBufferSource();
-      rain.buffer = buffer; rain.loop = true;
-      const lp = ac.createBiquadFilter();
-      lp.type = 'lowpass'; lp.frequency.value = 900;
-      const rainGain = ac.createGain();
-      rainGain.gain.value = 0.22;
-      rain.connect(lp); lp.connect(rainGain); rainGain.connect(out);
-      rain.start();
-
-      // 风铃滴点
+      const F_MAJ = [174.61, 196.00, 220.00, 233.08, 261.63, 293.66, 329.63, 349.23];
+      const bass = ac.createOscillator();
+      const bG = ac.createGain();
+      bass.type = 'sine';
+      bass.frequency.value = 87.31; // F2
+      bG.gain.value = 0;
+      bass.connect(bG); bG.connect(out);
+      const now0 = ac.currentTime;
+      bG.gain.linearRampToValueAtTime(0.04, now0 + 3.8);
+      bass.start();
       const step = () => {
         if (!out) return;
-        const freqs = [1318.51, 1567.98, 1760, 2093, 2349.32, 2637.02];
-        const f = freqs[Math.floor(Math.random() * freqs.length)];
-        const osc = ac.createOscillator();
-        const g = ac.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = f;
-        const now = ac.currentTime;
-        g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(0.05, now + 0.015);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 2.8);
-        osc.connect(g); g.connect(out);
-        osc.start(now); osc.stop(now + 2.9);
-        timers.push(setTimeout(step, 1500 + Math.random() * 4500));
-      };
-      step();
-      return () => {
-        timers.forEach(clearTimeout);
-        try { rain.stop(); } catch { /* noop */ }
-      };
-    },
-
-    // 04 Soft Chime — 和弦 pad 慢速切换 + 偶发高音 chime
-    function chime(ac, out) {
-      const timers = [];
-      let ci = 0;
-      const chord = (freqs) => freqs.map((f) => {
+        const base = F_MAJ[Math.floor(Math.random() * F_MAJ.length)];
+        const oct = Math.random() < 0.6 ? 1 : 2;
+        const f = base * oct;
         const osc = ac.createOscillator();
         const g = ac.createGain();
         osc.type = 'triangle';
-        osc.frequency.value = f / 2;
-        g.gain.value = 0;
-        osc.connect(g); g.connect(out);
-        osc.start();
-        return { osc, g };
-      });
-      let current = chord(CHORDS[ci]);
-      current.forEach(({ g }) => g.gain.value = 0.05);
-
-      const chordTimer = setInterval(() => {
-        ci = (ci + 1) % CHORDS.length;
-        const next = chord(CHORDS[ci]);
-        next.forEach(({ g }) => {
-          g.gain.setValueAtTime(0, ac.currentTime);
-          g.gain.linearRampToValueAtTime(0.05, ac.currentTime + 2.5);
-        });
-        current.forEach(({ osc, g }) => {
-          g.gain.linearRampToValueAtTime(0.0001, ac.currentTime + 2.8);
-          setTimeout(() => { try { osc.stop(); } catch { /* noop */ } }, 2900);
-        });
-        current = next;
-      }, 8000);
-      timers.push(chordTimer);
-
-      // 高音 chime 滴点
-      const step = () => {
-        if (!out) return;
-        const ff = PENTATONIC[Math.floor(Math.random() * PENTATONIC.length)] * 2;
-        const osc = ac.createOscillator();
-        const g = ac.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = ff;
-        const now = ac.currentTime;
-        g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(0.06, now + 0.01);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 3.2);
-        osc.connect(g); g.connect(out);
-        osc.start(now); osc.stop(now + 3.3);
-        timers.push(setTimeout(step, 3200 + Math.random() * 2600));
-      };
-      step();
-      return () => {
-        timers.forEach((t) => (typeof t === 'number' ? clearTimeout(t) : clearInterval(t)));
-        current.forEach(({ osc }) => { try { osc.stop(); } catch { /* noop */ } });
-      };
-    },
-
-    // 05 Whisper — 高八度五声旋律 + 低八度 pad，最空灵
-    function whisper(ac, out) {
-      const timers = [];
-      // 更轻的 pad：C3 + E3 + G3（sine, 低量）
-      const chordFreqs = [130.81, 164.81, 196.00];
-      const pads = chordFreqs.map((f) => {
-        const osc = ac.createOscillator();
-        const g = ac.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = f;
-        g.gain.value = 0.08;
-        osc.connect(g); g.connect(out);
-        osc.start();
-        return { osc, g };
-      });
-      const lfo = ac.createOscillator();
-      const lfoG = ac.createGain();
-      lfo.frequency.value = 0.05;
-      lfoG.gain.value = 0.035;
-      lfo.connect(lfoG);
-      pads.forEach(({ g }) => lfoG.connect(g.gain));
-      lfo.start();
-
-      // 高八度稀疏旋律
-      const step = () => {
-        if (!out) return;
-        const f = PENTATONIC[Math.floor(Math.random() * PENTATONIC.length)] * 2;
-        const osc = ac.createOscillator();
-        const g = ac.createGain();
-        osc.type = 'sine';
         osc.frequency.value = f;
         const now = ac.currentTime;
         g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(0.07, now + 1.2);
-        g.gain.linearRampToValueAtTime(0.05, now + 2.6);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 5.4);
+        g.gain.linearRampToValueAtTime(0.045, now + 0.7);
+        g.gain.linearRampToValueAtTime(0.03, now + 2.4);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 5.2);
         osc.connect(g); g.connect(out);
-        osc.start(now); osc.stop(now + 5.5);
-        timers.push(setTimeout(step, 3400 + Math.random() * 2600));
+        osc.start(now); osc.stop(now + 5.3);
+        timers.push(setTimeout(step, 3000 + Math.random() * 2400));
       };
       step();
       return () => {
         timers.forEach(clearTimeout);
-        pads.forEach(({ osc }) => { try { osc.stop(); } catch { /* noop */ } });
+        try { bass.stop(); } catch { /* noop */ }
+      };
+    },
+
+    // 04 · Moon Light — G 大调温柔琶音 + 单 G2 底音（非常慢、非常柔）
+    function moonLight(ac, out) {
+      const timers = [];
+      const G_MAJ = [196.00, 220.00, 246.94, 261.63, 293.66, 329.63, 392.00, 440.00];
+      const bass = ac.createOscillator();
+      const bG = ac.createGain();
+      bass.type = 'sine';
+      bass.frequency.value = 98.0; // G2
+      bG.gain.value = 0;
+      bass.connect(bG); bG.connect(out);
+      const now0 = ac.currentTime;
+      bG.gain.linearRampToValueAtTime(0.038, now0 + 4.4);
+      bass.start();
+      const lfo = ac.createOscillator();
+      const lfoG = ac.createGain();
+      lfo.frequency.value = 0.035;
+      lfoG.gain.value = 0.012;
+      lfo.connect(lfoG); lfoG.connect(bG.gain);
+      lfo.start();
+      const step = () => {
+        if (!out) return;
+        const f = G_MAJ[Math.floor(Math.random() * G_MAJ.length)]
+                     * (Math.random() < 0.55 ? 1 : 2);
+        const osc = ac.createOscillator();
+        const g = ac.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = f;
+        const now = ac.currentTime;
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(0.055, now + 1.4);
+        g.gain.linearRampToValueAtTime(0.04, now + 3.4);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 6.8);
+        osc.connect(g); g.connect(out);
+        osc.start(now); osc.stop(now + 6.9);
+        timers.push(setTimeout(step, 3800 + Math.random() * 2600));
+      };
+      step();
+      return () => {
+        timers.forEach(clearTimeout);
+        try { bass.stop(); } catch { /* noop */ }
         try { lfo.stop(); } catch { /* noop */ }
       };
     },
+
+    // 05 · Quiet Book — D 小调温和单旋律 + 单 D3 底音（最安静的一首）
+    function quietBook(ac, out) {
+      const timers = [];
+      const DMIN = [146.83, 174.61, 196.00, 220.00, 261.63, 293.66, 329.63, 349.23];
+      const bass = ac.createOscillator();
+      const bG = ac.createGain();
+      bass.type = 'sine';
+      bass.frequency.value = 146.83; // D3
+      bG.gain.value = 0;
+      bass.connect(bG); bG.connect(out);
+      const now0 = ac.currentTime;
+      bG.gain.linearRampToValueAtTime(0.042, now0 + 4);
+      bass.start();
+      const step = () => {
+        if (!out) return;
+        const f = DMIN[Math.floor(Math.random() * DMIN.length)]
+                    * (Math.random() < 0.65 ? 1 : 2);
+        const osc = ac.createOscillator();
+        const g = ac.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = f;
+        const now = ac.currentTime;
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(0.04, now + 1.2);
+        g.gain.linearRampToValueAtTime(0.03, now + 2.8);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 6.2);
+        osc.connect(g); g.connect(out);
+        osc.start(now); osc.stop(now + 6.3);
+        timers.push(setTimeout(step, 3400 + Math.random() * 2800));
+      };
+      step();
+      return () => {
+        timers.forEach(clearTimeout);
+        try { bass.stop(); } catch { /* noop */ }
+      };
+    },
   ];
-  const TRACK_NAMES = ['Ethereal', 'Piano', 'Rain', 'Chime', 'Whisper'];
+  const TRACK_NAMES = ['Gentle Sun', 'Soft Breeze', 'Warm Paper', 'Moon Light', 'Quiet Book'];
 
   function loadPref() {
     enabled = localStorage.getItem(MUSIC_KEY) === 'true';
@@ -601,6 +564,10 @@ const Music = (() => {
 
   function start() {
     if (masterGain) return;
+    // 关开关时绝不偷偷启动
+    if (!enabled) return;
+    // 音量 0 时也不启动（用户不想听）
+    if (volume <= 0) return;
     ensureMasterGain();
     fadeInMaster();
     playCurrentSong();
@@ -609,30 +576,45 @@ const Music = (() => {
   function stop() {
     const ac = ctx;
     const cleanupFn = songCleanup;
-    fadeOutMaster(0.8);
     if (fadeTimer) clearTimeout(fadeTimer);
+
+    // 立即清理旧曲的所有 loop / setTimeout / 振荡器（尤其 rain 的 6s loop buffer，必须立刻 stop）
+    // 这是停止发声的核心一步：释放每首 TRACK 返回的 cleanup 里的所有 BufferSource / Oscillator
+    cleanupSong(cleanupFn);
+
+    // 同时把 masterGain 音量瞬间拉到 0（30ms 极短淡防爆音，但不等待线性渐变）
+    if (masterGain && ac) {
+      masterGain.gain.cancelScheduledValues(ac.currentTime);
+      const base = masterGain.gain.value || 0;
+      masterGain.gain.setValueAtTime(base, ac.currentTime);
+      masterGain.gain.linearRampToValueAtTime(0, ac.currentTime + 0.03);
+    }
     fadeTimer = setTimeout(() => {
-      cleanupSong(cleanupFn);
       if (masterGain) { try { masterGain.disconnect(); } catch { /* noop */ } }
       masterGain = null;
-    }, 850);
+    }, 80);
   }
 
   function nextSong() {
     songIdx = (songIdx + 1) % TRACKS.length;
     savePref();
     updateSongUI();
-    if (!masterGain) return;
-    // 交叉淡入淡出：停旧 → 建新
+    // 如果当前音乐是关闭的：只换编号，不自动开启（不存在"一直存在无法关闭"的背景音乐）
+    if (!enabled) return;
+
+    // 切歌时：先立即停旧曲（不留残留的 loop / 持续音），再建新曲淡入
     const prevCleanup = songCleanup;
-    fadeOutMaster(0.6);
     if (fadeTimer) clearTimeout(fadeTimer);
+
+    // 极快淡到 0（100ms）— 防止"新曲叠旧曲"
+    fadeOutMaster(0.1);
     fadeTimer = setTimeout(() => {
+      // 旧曲所有定时 / 振荡器 / rain 6s loop — 立即释放
       cleanupSong(prevCleanup);
-      // 新建 master 内部节点（保持 masterGain，替换 song）
+      // 新曲：从零开始淡入，避免声音叠加
       playCurrentSong();
       fadeInMaster();
-    }, 650);
+    }, 120);
   }
 
   function toggle() {
@@ -648,7 +630,14 @@ const Music = (() => {
     savePref();
     if (masterGain && ctx) {
       masterGain.gain.cancelScheduledValues(ctx.currentTime);
-      masterGain.gain.setTargetAtTime(volume * 0.5, ctx.currentTime, 0.12);
+      // 音量 = 0：直接瞬间静音（不要等 setTargetAtTime 的指数收敛，避免残留尾巴）
+      if (volume <= 0) {
+        const base = masterGain.gain.value || 0;
+        masterGain.gain.setValueAtTime(base, ctx.currentTime);
+        masterGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.02);
+      } else {
+        masterGain.gain.setTargetAtTime(volume * 0.5, ctx.currentTime, 0.12);
+      }
     }
     updateVolumeUI();
   }

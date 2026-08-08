@@ -28,8 +28,8 @@
   "markUndone": "Marcar por hacer",
   "soundOn": "Sonido activado",
   "soundOff": "Sonido desactivado",
-  "musicOn": "Música activada",
-  "musicOff": "Música desactivada",
+  "musicOn": "Sonido activado",
+  "musicOff": "Silencio total",
   "musicVolume": "Volumen de música",
   "langLabel": "Idioma"
 }

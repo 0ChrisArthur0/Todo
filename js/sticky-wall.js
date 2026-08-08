@@ -19,14 +19,69 @@ const StickyWall = (() => {
     callbacks = cbs;
   }
 
-  /** 绑定单张便签的指针拖拽 */
+  /** 绑定单张便签的指针拖拽 / 右下角缩放 */
   function bindNote(el, id, zone) {
     el.dataset.taskId = id;
     el.dataset.zone = zone;
 
     el.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.task-checkbox, .task-note-input, button, a')) return;
       if (e.button !== 0) return;
+
+      // --- 缩放模式：命中右下角手柄 ---
+      if (e.target.closest('.resize-handle')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = el.getBoundingClientRect();
+        const minW = el._minW || 120, minH = el._minH || 90;
+        const maxW = el._maxW || 360, maxH = el._maxH || 360;
+        const startW = rect.width;
+        const startH = rect.height;
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const resizing = { el, id, zone, pointerId: e.pointerId, startW, startH, startX, startY, minW, maxW, minH, maxH, moved: false };
+
+        el.classList.add('resizing');
+        try { el.setPointerCapture(e.pointerId); } catch { /* noop */ }
+
+        function onMove(ev) {
+          if (!resizing || resizing.el !== el) return;
+          const dx = ev.clientX - startX;
+          const dy = ev.clientY - startY;
+          if (Math.abs(dx) > 3 || Math.abs(dy) > 3) resizing.moved = true;
+          const w = Math.round(Math.min(Math.max(startW + dx, minW), maxW));
+          const h = Math.round(Math.min(Math.max(startH + dy, minH), maxH));
+          el.style.width = `${w}px`;
+          // 注意：sticky-note 本来用 min-height，所以我们调整 min-height
+          el.style.minHeight = `${h}px`;
+          // 同步内容缩放：以 168 为基准，最小 1x，最大 maxW / 168（~2.14x）
+          const baseW = el._baseW || 168;
+          const s = Math.max(1, Math.min(maxW / baseW, w / baseW));
+          el.style.setProperty('--note-scale', s.toFixed(3));
+        }
+        function onUp(ev) {
+          if (!resizing || resizing.el !== el) return;
+          el.classList.remove('resizing');
+          try { el.releasePointerCapture(resizing.pointerId); } catch { /* noop */ }
+          el.removeEventListener('pointermove', onMove);
+          el.removeEventListener('pointerup', onUp);
+          el.removeEventListener('pointercancel', onUp);
+
+          if (resizing.moved) {
+            const w = el.offsetWidth;
+            const h = el.offsetHeight;
+            AudioFX.play('paper');
+            callbacks.onResize?.(id, zone, w, h);
+          }
+        }
+
+        el.addEventListener('pointermove', onMove);
+        el.addEventListener('pointerup', onUp);
+        el.addEventListener('pointercancel', onUp);
+        return;
+      }
+
+      // --- 拖拽模式：排除交互控件 ---
+      if (e.target.closest('.task-checkbox, .task-note-input, button, a')) return;
 
       e.preventDefault();
       activeNote = { el, id, zone, startX: e.clientX, startY: e.clientY, moved: false, pointerId: e.pointerId };

@@ -28,8 +28,8 @@
   "markUndone": "标记未完成",
   "soundOn": "音效开",
   "soundOff": "音效关",
-  "musicOn": "音乐开",
-  "musicOff": "音乐关",
+  "musicOn": "声音开",
+  "musicOff": "全局静音",
   "musicVolume": "音乐音量",
   "langLabel": "语言"
 }

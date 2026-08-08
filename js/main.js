@@ -16,6 +16,8 @@
   const confirmModal = $('#confirm-modal');
   const modalEditInput = $('#modal-edit-input');
 
+  const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+
   /* ============================================================
      渲染
      ============================================================ */
@@ -66,6 +68,22 @@
     note.style.setProperty('--nbw-delay', `${(Math.random() * 5.5).toFixed(2)}s`);
     note.style.setProperty('--nbw-delay2', `${(Math.random() * 5.5).toFixed(2)}s`);
 
+    // 尺寸（持久化）：默认 168xmin120，可调 120~360 x 90~360
+    const MIN_W = 120, MIN_H = 90, MAX_W = 360, MAX_H = 360;
+    const BASE_W = 168;
+    if (task.w) {
+      note.style.width = `${clamp(task.w, MIN_W, MAX_W)}px`;
+    }
+    if (task.h) {
+      note.style.minHeight = `${clamp(task.h, MIN_H, MAX_H)}px`;
+    }
+    note._minW = MIN_W; note._minH = MIN_H; note._maxW = MAX_W; note._maxH = MAX_H;
+    note._baseW = BASE_W;
+    // 根据实际宽度计算内容缩放（最小 1x，最大约 2.14x）
+    const w0 = parseFloat(note.style.width) || BASE_W;
+    const s = Math.max(1, Math.min(MAX_W / BASE_W, w0 / BASE_W));
+    note.style.setProperty('--note-scale', s.toFixed(3));
+
     const isDone = zone === 'done';
 
     const wm = makeWatermark(task);
@@ -92,6 +110,7 @@
         </div>
       </div>
       <span class="note-watermark" style="--wm-align:${wm.align}">${escapeHtml(wm.text)}</span>
+      <span class="resize-handle" aria-hidden="true"></span>
     `;
 
     StickyWall.applyPosition(note, task);
@@ -240,6 +259,16 @@
     if (task) {
       task.x = Math.round(x);
       task.y = Math.round(y);
+      persist();
+    }
+  }
+
+  function updateSize(id, zone, w, h) {
+    const list = zone === 'todo' ? data.todos : data.done;
+    const task = list.find((t) => t.id === id);
+    if (task) {
+      task.w = Math.round(w);
+      task.h = Math.round(h);
       persist();
     }
   }
@@ -412,7 +441,55 @@
       onMoveToTodo: (id) => moveTask(id, 'done', 'todo'),
       onDiscard: (id) => discardTask(id),
       onReposition: (id, zone, x, y) => updatePosition(id, zone, x, y),
+      onResize: (id, zone, w, h) => updateSize(id, zone, w, h),
     });
+
+    // —— 背景切换：9 种（3 种纯色纸+原插画 + 6 张贴图），LocalStorage 持久化 ——
+    (() => {
+      const BG_KEY = 'sketch_todo_background';
+      const VALID = ['default', 'white', 'purewhite', 'whitecrumple', 'kraft', 'cork', 'osb', 'damask', 'dots'];
+      const btn = $('#bg-toggle');
+      const popup = $('#bg-popup');
+      if (!btn || !popup) return;
+
+      function apply(name) {
+        const v = VALID.includes(name) ? name : 'default';
+        document.body.dataset.bg = v;
+        popup.querySelectorAll('.bg-thumb').forEach((t) => {
+          t.classList.toggle('active', t.dataset.bg === v);
+        });
+      }
+      function save(name) {
+        localStorage.setItem(BG_KEY, name);
+      }
+      const stored = localStorage.getItem(BG_KEY);
+      if (VALID.includes(stored)) apply(stored); else apply('default');
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = popup.classList.toggle('open');
+        btn.setAttribute('aria-expanded', String(open));
+        popup.setAttribute('aria-hidden', String(!open));
+        AudioFX.play('paper');
+      });
+      popup.addEventListener('click', (e) => e.stopPropagation());
+      document.addEventListener('click', (e) => {
+        if (!popup.classList.contains('open')) return;
+        if (e.target !== btn && !popup.contains(e.target)) {
+          popup.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
+          popup.setAttribute('aria-hidden', 'true');
+        }
+      });
+      popup.querySelectorAll('.bg-thumb').forEach((t) => {
+        t.addEventListener('click', () => {
+          const v = t.dataset.bg || 'default';
+          apply(v);
+          save(v);
+          AudioFX.play('click');
+        });
+      });
+    })();
 
     I18n.onChange(() => {
       AudioFX.play('lang');
