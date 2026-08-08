@@ -31,5 +31,15 @@
   "musicOn": "Sonido activado",
   "musicOff": "Silencio total",
   "musicVolume": "Volumen de música",
-  "langLabel": "Idioma"
+  "langLabel": "Idioma",
+  "background": "Fondo",
+  "bg_default": "Beige",
+  "bg_white": "Blanco roto",
+  "bg_purewhite": "Blanco puro",
+  "bg_whitecrumple": "Arrugado",
+  "bg_kraft": "Kraft",
+  "bg_cork": "Corcho",
+  "bg_osb": "OSB",
+  "bg_damask": "Damasco",
+  "bg_dots": "Puntos"
 }

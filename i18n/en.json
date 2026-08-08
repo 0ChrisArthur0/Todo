@@ -31,5 +31,15 @@
   "musicOn": "Sound on",
   "musicOff": "Mute all",
   "musicVolume": "Music volume",
-  "langLabel": "Language"
+  "langLabel": "Language",
+  "background": "Background",
+  "bg_default": "Beige",
+  "bg_white": "Off-white",
+  "bg_purewhite": "Pure White",
+  "bg_whitecrumple": "Crumpled",
+  "bg_kraft": "Kraft",
+  "bg_cork": "Corkboard",
+  "bg_osb": "OSB Wood",
+  "bg_damask": "Damask",
+  "bg_dots": "Dot Grid"
 }

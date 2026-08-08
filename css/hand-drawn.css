@@ -6,10 +6,10 @@
 /* --- 字体体系 --- */
 @font-face {
   font-family: 'ChenYuluoyan';
-  src: url('https://cdn.jsdelivr.net/npm/@fontpkg/chenyuluoyan@1.0.0/ChenYuluoyan-Thin.ttf') format('truetype');
+  src: url('../assets/ChenYuluoyan-Thin.ttf') format('truetype');
   font-weight: 100 900;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 .font-title {
@@ -28,13 +28,13 @@ h1.font-title {
 }
 
 body[data-lang="zh"] .font-title {
-  font-family: 'ChenYuluoyan', 'Long Cang', 'Ma Shan Zheng', cursive;
+  font-family: 'ChenYuluoyan', 'Long Cang', 'Ma Shan Zheng', cursive !important;
   font-weight: 100;
   letter-spacing: 0.04em;
 }
 
 body[data-lang="zh"] .font-body {
-  font-family: 'ChenYuluoyan', 'Long Cang', 'Ma Shan Zheng', cursive;
+  font-family: 'ChenYuluoyan', 'Long Cang', 'Ma Shan Zheng', cursive !important;
   font-weight: 100;
   font-size: 1.05em;
 }
@@ -54,13 +54,16 @@ body[data-lang="ja"] .font-body {
 body[data-lang="en"] .font-body,
 body[data-lang="es"] .font-body,
 body[data-lang="fr"] .font-body {
-  font-family: 'ChenYuluoyan', 'Nothing You Could Do', 'Caveat', 'Patrick Hand', cursive;
+  font-family: 'ChenYuluoyan', 'Nothing You Could Do', 'Caveat', 'Patrick Hand', cursive !important;
   font-weight: 100;
   font-size: 1.08em;
   line-height: 1.5;
 }
 
 /* 便签内文本：特异性更高（.sticky-note .task-text.font-body），需定向覆盖 */
+body[data-lang="zh"] .sticky-note .task-text.font-body,
+body[data-lang="zh"] .sticky-note .task-note-input.font-body,
+body[data-lang="zh"] .sticky-note .task-note-display.font-body,
 body[data-lang="en"] .sticky-note .task-text.font-body,
 body[data-lang="es"] .sticky-note .task-text.font-body,
 body[data-lang="fr"] .sticky-note .task-text.font-body,
@@ -70,7 +73,7 @@ body[data-lang="fr"] .sticky-note .task-note-input.font-body,
 body[data-lang="en"] .sticky-note .task-note-display.font-body,
 body[data-lang="es"] .sticky-note .task-note-display.font-body,
 body[data-lang="fr"] .sticky-note .task-note-display.font-body {
-  font-family: 'ChenYuluoyan', 'Nothing You Could Do', 'Caveat', 'Patrick Hand', cursive;
+  font-family: 'ChenYuluoyan', 'Nothing You Could Do', 'Caveat', 'Patrick Hand', cursive !important;
   font-weight: 100;
 }
 

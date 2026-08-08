@@ -31,5 +31,15 @@
   "musicOn": "声音开",
   "musicOff": "全局静音",
   "musicVolume": "音乐音量",
-  "langLabel": "语言"
+  "langLabel": "语言",
+  "background": "背景",
+  "bg_default": "米黄纸",
+  "bg_white": "米白纸",
+  "bg_purewhite": "纯白纸",
+  "bg_whitecrumple": "白皱纸",
+  "bg_kraft": "牛皮纸",
+  "bg_cork": "软木板",
+  "bg_osb": "欧松板",
+  "bg_damask": "大马士革",
+  "bg_dots": "网格点"
 }
