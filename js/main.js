@@ -28,6 +28,7 @@
     note.dataset.taskId = task.id;
     note.dataset.zone = zone;
     note.dataset.shape = task.shape || 'flat';
+    note.dataset.hasNote = (task.note && task.note.length > 0) ? 'true' : 'false';
 
     // 破损不规则便签边缘 clip-path（每边5点 + 随机±2.5%）— 持久化防编辑丢失
     if (!task.cp) {
@@ -100,12 +101,13 @@
         </button>
         <div class="task-content">
           <p class="task-text font-body">${escapeHtml(task.text)}</p>
-          ${task.note ? `<p class="task-note-display font-body">${escapeHtml(task.note)}</p>` : ''}
           <div class="task-note-wrap">
-            <input type="text" class="task-note-input font-body"
+            <textarea class="task-note-input font-body"
               data-i18n-placeholder="notePlaceholder"
               placeholder="${escapeHtml(I18n.t('notePlaceholder'))}"
-              maxlength="300" value="${escapeHtml(task.note || '')}" />
+              maxlength="300"
+              rows="2"
+              wrap="soft">${escapeHtml(task.note || '')}</textarea>
           </div>
         </div>
       </div>
@@ -128,20 +130,47 @@
       if (Interactions.wasLongPress()) return;
       if (e.target.closest('.task-checkbox, .task-note-input')) return;
       AudioFX.play('paper');
-      toggleNoteInput(note);
     });
 
     const noteInput = note.querySelector('.task-note-input');
     noteInput.addEventListener('click', (e) => e.stopPropagation());
-    noteInput.addEventListener('change', () => {
-      updateNote(task.id, zone, noteInput.value.trim());
-    });
-    noteInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        updateNote(task.id, zone, noteInput.value.trim());
-        noteInput.blur();
+    noteInput.addEventListener('mousedown', (e) => e.stopPropagation());
+
+    function syncHasNoteFlag(val) {
+      const has = (val && val.length > 0) ? 'true' : 'false';
+      if (note.dataset.hasNote !== has) note.dataset.hasNote = has;
+    }
+
+    function autosize(el) {
+      // 空值：清除内联height，让CSS min-height生效（防止读scrollHeight得0）
+      if (!el.value) {
+        el.style.height = '';
+        return;
       }
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+    // 等DOM插入布局后再读scrollHeight，避免刚innerHTML完scrollHeight=0
+    requestAnimationFrame(() => autosize(noteInput));
+
+    let saveTimer = null;
+    function scheduleSave() {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        updateNote(task.id, zone, noteInput.value);
+        syncHasNoteFlag(noteInput.value);
+        saveTimer = null;
+      }, 180);
+    }
+
+    noteInput.addEventListener('input', () => {
+      autosize(noteInput);
+      scheduleSave();
+    });
+    noteInput.addEventListener('blur', () => {
+      if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+      updateNote(task.id, zone, noteInput.value);
+      syncHasNoteFlag(noteInput.value);
     });
 
     return note;
@@ -338,18 +367,6 @@
   /* ============================================================
      交互辅助
      ============================================================ */
-
-  function toggleNoteInput(note) {
-    const wrap = note.querySelector('.task-note-wrap');
-    const isOpen = wrap.classList.contains('open');
-
-    document.querySelectorAll('.task-note-wrap.open').forEach((w) => w.classList.remove('open'));
-
-    if (!isOpen) {
-      wrap.classList.add('open');
-      wrap.querySelector('.task-note-input')?.focus();
-    }
-  }
 
   function animateCheckmark(id) {
     requestAnimationFrame(() => {

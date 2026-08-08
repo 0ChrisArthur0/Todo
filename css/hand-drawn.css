@@ -67,18 +67,14 @@ body[data-lang="es"] .sticky-note .task-text.font-body,
 body[data-lang="fr"] .sticky-note .task-text.font-body,
 body[data-lang="en"] .sticky-note .task-note-input.font-body,
 body[data-lang="es"] .sticky-note .task-note-input.font-body,
-body[data-lang="fr"] .sticky-note .task-note-input.font-body,
-body[data-lang="en"] .sticky-note .task-note-display.font-body,
-body[data-lang="es"] .sticky-note .task-note-display.font-body,
-body[data-lang="fr"] .sticky-note .task-note-display.font-body {
+body[data-lang="fr"] .sticky-note .task-note-input.font-body {
   font-family: 'Nothing You Could Do', 'Caveat', 'Patrick Hand', 'ChenYuluoyan', 'Long Cang', 'Ma Shan Zheng', cursive;
   font-weight: 400;
 }
 
 /* 便签内文本（zh）：沿用原中文系统逻辑 */
 body[data-lang="zh"] .sticky-note .task-text.font-body,
-body[data-lang="zh"] .sticky-note .task-note-input.font-body,
-body[data-lang="zh"] .sticky-note .task-note-display.font-body {
+body[data-lang="zh"] .sticky-note .task-note-input.font-body {
   font-family: 'ChenYuluoyan', 'Long Cang', 'Ma Shan Zheng', cursive;
   font-weight: 100;
 }
@@ -1252,35 +1248,76 @@ body[data-bg="kraft"] .bg-img {
   word-break: break-word;
 }
 
+/* 备注容器 — 三态显示（根据 data-has-note + 悬浮/聚焦切换）
+   S3: data-has-note="true" → 一直显示
+   S2: data-has-note="false" + :hover / :focus-within → 悬浮或键盘聚焦时显示
+   S1: data-has-note="false" 默认 → 不显示（高度0，不占空间）*/
 .task-note-wrap {
-  max-height: 0;
+  display: block;
   overflow: hidden;
-  opacity: 0;
-  transition: max-height 0.35s ease, opacity 0.3s ease, margin 0.3s ease;
+  transition: max-height 0.3s ease, opacity 0.25s ease, margin 0.3s ease;
 }
 
-.task-note-wrap.open {
-  max-height: 60px;
+/* S3 有备注：一直显示 */
+.sticky-note[data-has-note="true"] .task-note-wrap {
+  max-height: 52em;
   opacity: 1;
-  margin-top: 0.4rem;
+  margin-top: calc(0.5rem * var(--note-scale, 1));
 }
 
+/* S1 无备注默认：隐藏，不占布局空间 */
+.sticky-note[data-has-note="false"] .task-note-wrap {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0 !important;
+  pointer-events: none;
+}
+
+/* S2 无备注 + 悬浮/键盘聚焦 → 淡入显示 */
+.sticky-note[data-has-note="false"]:hover .task-note-wrap,
+.sticky-note[data-has-note="false"]:focus-within .task-note-wrap {
+  max-height: 20em;
+  opacity: 1;
+  margin-top: calc(0.5rem * var(--note-scale, 1)) !important;
+  pointer-events: auto;
+}
+
+/* 备注输入：<textarea>，永久显示（S3）/ hover显示（S2），自动换行，随高度撑开 */
 .task-note-input {
+  display: block;
   width: 100%;
+  min-width: 0;
+  min-height: 2.2em;
+  max-height: 24em;
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.15);
-  padding: 0.2rem 0;
-  font-size: 0.75rem;
-  color: rgba(0, 0, 0, 0.5);
+  border-top: 1px dashed rgba(0, 0, 0, 0.18);
+  padding: 0.38rem 0 0.1rem;
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: rgba(0, 0, 0, 0.58);
   outline: none;
+  resize: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 0.2s ease;
 }
 
-.task-note-display {
-  font-size: 0.68rem;
-  color: rgba(0, 0, 0, 0.38);
-  margin-top: 0.3rem;
+.task-note-input:focus {
+  border-top-color: rgba(0, 0, 0, 0.35);
+}
+
+.task-note-input::placeholder {
+  color: rgba(0, 0, 0, 0.28);
+  opacity: 1;
   font-style: italic;
+  white-space: nowrap;
 }
 
 .sticky-note.long-press-active {
@@ -1333,28 +1370,19 @@ body[data-bg="kraft"] .bg-img {
   font-size: calc(0.9rem * var(--note-scale, 1));
 }
 
-.sticky-note .task-note-wrap.open {
-  max-height: calc(60px * var(--note-scale, 1));
-  margin-top: calc(0.4rem * var(--note-scale, 1));
-}
-
+/* 备注随便利贴尺寸同步缩放（S1/S2/S3 的 margin-top 已在状态规则里乘 scale）*/
 .sticky-note .task-note-input.font-body {
-  padding: calc(0.2rem * var(--note-scale, 1)) 0;
-  font-size: calc(0.75rem * var(--note-scale, 1));
-  line-height: calc(1.4 * var(--note-scale, 1));
-  border-bottom-width: calc(1px * max(1, var(--note-scale, 1)));
+  padding: calc(0.38rem * var(--note-scale, 1)) 0 calc(0.1rem * var(--note-scale, 1));
+  font-size: calc(0.76rem * var(--note-scale, 1));
+  line-height: calc(1.5 * var(--note-scale, 1));
+  min-height: calc(2.2em * var(--note-scale, 1));
+  max-height: calc(24em * var(--note-scale, 1));
+  border-top-width: calc(1px * max(1, var(--note-scale, 1)));
 }
 
 .sticky-note .task-note-input.font-body::placeholder {
-  font-size: calc(0.75rem * var(--note-scale, 1));
-  line-height: calc(1.4 * var(--note-scale, 1));
-  opacity: 1;
-}
-
-.sticky-note .task-note-display.font-body {
-  font-size: calc(0.68rem * var(--note-scale, 1));
-  line-height: calc(1.45 * var(--note-scale, 1));
-  margin-top: calc(0.3rem * var(--note-scale, 1));
+  font-size: calc(0.76rem * var(--note-scale, 1));
+  line-height: calc(1.5 * var(--note-scale, 1));
 }
 
 .sticky-note .note-watermark {
