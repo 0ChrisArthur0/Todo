@@ -41,5 +41,17 @@
   "bg_cork": "软木板",
   "bg_osb": "欧松板",
   "bg_damask": "大马士革",
-  "bg_dots": "网格点"
+  "bg_dots": "网格点",
+  "dailyTitle": "每日待做",
+  "dailyPlaceholder": "今日任务…",
+  "dailyEmpty": "今天还没有任务，写点今天想做的事吧 ✎",
+  "dailyCollapse": "收起每日栏",
+  "dailyExpand": "展开每日栏",
+  "dailyFontSize": "字号",
+  "fontSizeLabel": "字号",
+  "globalFontSizeTitle": "全局字号（85%~120%）",
+  "dailyDelete": "删除",
+  "colorBeige": "米黄",
+  "colorBlue": "浅蓝",
+  "colorPink": "浅粉"
 }

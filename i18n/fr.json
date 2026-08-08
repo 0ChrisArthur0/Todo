@@ -41,5 +41,17 @@
   "bg_cork": "Liège",
   "bg_osb": "OSB",
   "bg_damask": "Damassé",
-  "bg_dots": "Points"
+  "bg_dots": "Points",
+  "dailyTitle": "Aujourd'hui",
+  "dailyPlaceholder": "Une tâche pour aujourd'hui…",
+  "dailyEmpty": "Rien aujourd'hui — écrivez quelque chose ✎",
+  "dailyCollapse": "Réduire le panneau",
+  "dailyExpand": "Développer le panneau",
+  "dailyFontSize": "Taille",
+  "fontSizeLabel": "Taille",
+  "globalFontSizeTitle": "Taille du texte (85%~120%)",
+  "dailyDelete": "Supprimer",
+  "colorBeige": "Beige",
+  "colorBlue": "Bleu",
+  "colorPink": "Rose"
 }

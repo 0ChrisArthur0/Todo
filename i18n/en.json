@@ -41,5 +41,17 @@
   "bg_cork": "Corkboard",
   "bg_osb": "OSB Wood",
   "bg_damask": "Damask",
-  "bg_dots": "Dot Grid"
+  "bg_dots": "Dot Grid",
+  "dailyTitle": "Today",
+  "dailyPlaceholder": "A task for today…",
+  "dailyEmpty": "No tasks today — jot something down ✎",
+  "dailyCollapse": "Collapse daily panel",
+  "dailyExpand": "Expand daily panel",
+  "dailyFontSize": "Text size",
+  "fontSizeLabel": "Size",
+  "globalFontSizeTitle": "Global font size (85%~120%)",
+  "dailyDelete": "Delete",
+  "colorBeige": "Beige",
+  "colorBlue": "Blue",
+  "colorPink": "Pink"
 }

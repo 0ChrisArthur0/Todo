@@ -41,5 +41,17 @@
   "bg_cork": "Corcho",
   "bg_osb": "OSB",
   "bg_damask": "Damasco",
-  "bg_dots": "Puntos"
+  "bg_dots": "Puntos",
+  "dailyTitle": "Hoy",
+  "dailyPlaceholder": "Una tarea para hoy…",
+  "dailyEmpty": "Sin tareas hoy — anota algo ✎",
+  "dailyCollapse": "Contraer panel",
+  "dailyExpand": "Expandir panel",
+  "dailyFontSize": "Tamaño",
+  "fontSizeLabel": "Tamaño",
+  "globalFontSizeTitle": "Tamaño global (85%~120%)",
+  "dailyDelete": "Borrar",
+  "colorBeige": "Beige",
+  "colorBlue": "Azul",
+  "colorPink": "Rosa"
 }

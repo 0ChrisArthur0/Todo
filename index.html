@@ -122,6 +122,20 @@
       </svg>
       <input id="music-volume" type="range" min="0" max="100" value="30" class="music-volume" aria-label="Music volume" />
     </label>
+    <label class="control-sketch global-font-wrap font-body" data-i18n-title="globalFontSizeTitle" title="全局字号">
+      <span class="global-font-label" data-i18n="fontSizeLabel">A</span>
+      <input
+        id="global-font-scale"
+        type="range"
+        min="85"
+        max="120"
+        step="5"
+        value="100"
+        class="global-font-range"
+        aria-label="Global font size scale"
+      />
+      <span class="global-font-num tabular-nums" id="global-font-num">100%</span>
+    </label>
   </div>
 
   <div id="app" class="relative z-10 lang-visible">
@@ -190,6 +204,40 @@
           <span class="stat-label" data-i18n="statRate">完成率</span>
           <span id="stat-rate" class="stat-num font-title">0%</span>
         </div>
+      </div>
+    </aside>
+
+    <!-- ⑤ 每日待做侧边栏：可拖动/可收起/自动吸附左右 → 白色手绘风，便签可选 3 色 -->
+    <aside id="daily-sidebar" class="daily-sidebar sketch-frame" role="complementary" aria-label="Daily todo list">
+      <button type="button" class="daily-sidebar-handle" id="daily-sidebar-handle" aria-label="Collapse daily sidebar" data-i18n-title="dailyCollapse" title="收起">
+        <svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4">
+          <path d="M10 4 L6 8 L10 12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="daily-sidebar-body">
+        <header class="daily-sidebar-head">
+          <h3 class="daily-sidebar-title font-title" data-i18n="dailyTitle">每日待做</h3>
+          <div class="daily-sidebar-date font-body" id="daily-sidebar-date"></div>
+        </header>
+        <form id="daily-add-form" class="daily-add-form input-sketch-wrap">
+          <div class="input-sketch-border">
+            <input
+              id="daily-new-input"
+              type="text"
+              class="input-sketch font-body w-full bg-transparent px-3 py-2 text-xs outline-none placeholder:opacity-30"
+              data-i18n-placeholder="dailyPlaceholder"
+              placeholder="今日任务…"
+              maxlength="160"
+              autocomplete="off"
+            />
+          </div>
+          <div class="daily-color-picker" role="group" aria-label="Note color">
+            <button type="button" class="daily-color-swatch" data-color="beige" aria-label="Beige" data-i18n-title="colorBeige" title="米黄"></button>
+            <button type="button" class="daily-color-swatch" data-color="blue" aria-label="Blue" data-i18n-title="colorBlue" title="浅蓝"></button>
+            <button type="button" class="daily-color-swatch" data-color="pink" aria-label="Pink" data-i18n-title="colorPink" title="浅粉"></button>
+          </div>
+        </form>
+        <p id="daily-empty" class="daily-empty font-body" data-i18n="dailyEmpty">今天还没有任务，写点今天想做的事吧 ✎</p>
       </div>
     </aside>
 
