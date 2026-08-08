@@ -64,6 +64,7 @@ const Storage = (() => {
       const shapes = ['flat', 'corner-curl', 'crumple'];
       task.shape = shapes[Math.floor(Math.random() * shapes.length)];
     }
+    task.pinned = !!task.pinned;
     return task;
   }
 
@@ -119,6 +120,7 @@ const Storage = (() => {
           rotation: typeof it.rotation === 'number' ? it.rotation : (Math.random() - 0.5) * 4,
           color: ['beige', 'blue', 'pink'].includes(it.color) ? it.color : 'beige',
           note: typeof it.note === 'string' ? it.note : '',
+          pinned: !!it.pinned,
         }))
       : [];
     const rawPrefs = raw.prefs && typeof raw.prefs === 'object' ? { ...raw.prefs } : {};

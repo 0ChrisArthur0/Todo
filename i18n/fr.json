@@ -53,5 +53,7 @@
   "dailyDelete": "Supprimer",
   "colorBeige": "Beige",
   "colorBlue": "Bleu",
-  "colorPink": "Rose"
+  "colorPink": "Rose",
+  "pushpinHint": "Glissez sur une note pour l'épingler",
+  "pushpinLabel": "Épingler"
 }

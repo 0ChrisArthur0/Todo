@@ -53,5 +53,7 @@
   "dailyDelete": "删除",
   "colorBeige": "米黄",
   "colorBlue": "浅蓝",
-  "colorPink": "浅粉"
+  "colorPink": "浅粉",
+  "pushpinHint": "拖到便利贴上固定位置",
+  "pushpinLabel": "拖拽固定"
 }

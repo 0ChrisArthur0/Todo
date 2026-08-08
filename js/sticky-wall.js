@@ -80,8 +80,9 @@ const StickyWall = (() => {
         return;
       }
 
-      // --- 拖拽模式：排除交互控件 ---
-      if (e.target.closest('.task-checkbox, .task-note-input, button, a')) return;
+      // --- 拖拽模式：排除交互控件 + 已固定（大头针）便签 ---
+      if (e.target.closest('.task-checkbox, .task-note-input, button, a, .note-pin')) return;
+      if (el.dataset.pinned === 'true') return;
 
       e.preventDefault();
       activeNote = { el, id, zone, startX: e.clientX, startY: e.clientY, moved: false, pointerId: e.pointerId };
@@ -139,6 +140,7 @@ const StickyWall = (() => {
   function finishDrag(clientX, clientY) {
     const { el, id, zone, moved } = activeNote;
     el.classList.remove('dragging');
+    el.style.zIndex = ''; // 清除拖拽时临时置顶的 inline z-index，让 CSS 类的层叠规则恢复
     if (activeNote.pointerId != null) {
       try { el.releasePointerCapture(activeNote.pointerId); } catch { /* noop */ }
     }

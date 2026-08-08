@@ -955,8 +955,14 @@ body[data-bg="kraft"] .bg-img {
   box-shadow: 0 3px 4px rgba(0,0,0,0.07), 0 9px 18px -2px rgba(0,0,0,0.06), 0 14px 34px -10px rgba(0,0,0,0.11);
 }
 
-/* 已完成便利贴永远沉在待办下面 */
+/* 已完成便利贴永远沉在待办下面（普通 + 每日便利贴同理） */
 .sticky-note[data-zone="done"] {
+  z-index: 5;
+}
+.sticky-note[data-zone="daily"] {
+  z-index: 10;
+}
+.sticky-note[data-zone="daily"].daily-done {
   z-index: 5;
 }
 
@@ -1656,6 +1662,7 @@ html {
 }
 .global-font-label {
   font-family: inherit;
+  font-size: calc(10px * var(--global-font-scale, 1));
   opacity: 0.75;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -1748,16 +1755,19 @@ html {
   content: none;
 }
 
-/* ---------- Drag handle = 收起按钮（极简：单一按钮兼作拖拽手柄） ---------- */
+/* ---------- Drag handle = 收起按钮（竖向把手 + 放大） ---------- */
 .daily-sidebar-handle {
   flex: 0 0 var(--daily-collapse-w);
   width: var(--daily-collapse-w);
+  min-height: 160px;
   background: #ffffff;
   border: none;
   border-right: 1px dashed var(--daily-line);
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
+  gap: 6px;
   padding: 0;
   margin: 0;
   cursor: grab;
@@ -1771,12 +1781,40 @@ html {
 }
 .daily-sidebar-handle:active { cursor: grabbing; }
 .daily-sidebar-handle:hover { background: #f4f2ea; }
-.daily-sidebar-handle svg { width: 18px; height: 18px; }
+/* 去掉箭头，仅保留竖向把手虚线 */
+.daily-sidebar-handle svg { display: none; }
 
-.daily-sidebar[data-side="right"] .daily-sidebar-handle .chev { transform: scaleX(1); }
-.daily-sidebar[data-side="left"]  .daily-sidebar-handle .chev { transform: scaleX(-1); }
-.daily-sidebar.collapsed .daily-sidebar-handle .chev { transform: scaleX(-1); }
-.daily-sidebar.collapsed[data-side="left"] .daily-sidebar-handle .chev { transform: scaleX(1); }
+/* 竖向把手指示：两条手绘虚线 */
+.daily-sidebar-handle::before {
+  content: '';
+  width: 2px;
+  height: 48px;
+  background-image: linear-gradient(to bottom,
+    rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.35) 50%, transparent 50%);
+  background-size: 2px 7px;
+  background-repeat: repeat-y;
+  filter: url(#crayon-rough);
+  opacity: 0.75;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(50% - 24px);
+}
+.daily-sidebar-handle::after {
+  content: '';
+  width: 2px;
+  height: 48px;
+  background-image: linear-gradient(to bottom,
+    rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.35) 50%, transparent 50%);
+  background-size: 2px 7px;
+  background-repeat: repeat-y;
+  filter: url(#crayon-rough);
+  opacity: 0.75;
+  position: absolute;
+  left: 50%;
+  transform: translateX(4px);
+  top: calc(50% - 24px);
+}
 
 /* ---------- Body（展开主体） ---------- */
 .daily-sidebar-body {
@@ -1903,9 +1941,9 @@ html {
   height: 20px;
   padding: 0;
   border-radius: 5px;
-  border: 1px dashed rgba(160, 40, 30, 0.35);
+  border: 1px dashed rgba(0, 0, 0, 0.35);
   background: rgba(255, 255, 255, 0.6);
-  color: rgba(160, 40, 30, 0.85);
+  color: #000;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -1914,9 +1952,9 @@ html {
   z-index: 3;
 }
 .daily-note-delete:hover {
-  background: rgba(200, 50, 30, 0.12);
-  color: #a33;
-  border-color: rgba(200, 50, 30, 0.55);
+  background: rgba(0, 0, 0, 0.08);
+  color: #000;
+  border-color: rgba(0, 0, 0, 0.55);
   transform: scale(1.06);
 }
 .daily-note-delete:active { transform: scale(0.94); }
@@ -1949,4 +1987,100 @@ html {
     top: 120px;
     max-height: calc(100vh - 220px);
   }
+}
+
+/* ---------- 大头针：侧边栏入口 ---------- */
+.pushpin-source-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  margin-top: 8px;
+  padding: 6px 0 2px;
+}
+.pushpin-source {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  color: var(--daily-text, #444);
+  opacity: 0.65;
+  transition: opacity 0.2s, transform 0.15s;
+  filter: url(#crayon-rough);
+  touch-action: none;
+  user-select: none;
+}
+.pushpin-source:hover { opacity: 1; transform: scale(1.08); }
+.pushpin-source:active { cursor: grabbing; }
+.pushpin-source svg { width: 22px; height: 22px; }
+.pushpin-source-label {
+  font-size: calc(9px * var(--global-font-scale, 1));
+  color: var(--daily-text-soft, #999);
+  opacity: 0.6;
+  letter-spacing: 0.04em;
+}
+
+/* 拖拽幽灵 */
+.pushpin-ghost {
+  position: fixed !important;
+  z-index: 9999;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.3);
+  opacity: 0.85;
+  filter: url(#crayon-rough);
+  color: #000;
+}
+
+/* ---------- 大头针：便利贴上的标记 ---------- */
+.note-pin {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+  width: 22px;
+  height: 22px;
+  z-index: 6;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  cursor: pointer;
+}
+/* pinned 状态：显示大头针 */
+.sticky-note[data-pinned="true"] .note-pin,
+.note-pin.pinned {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+  pointer-events: auto;
+}
+.note-pin::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 2 L15 2 L14 9 L17 12 L12 13 L7 12 L10 9 Z' fill='%23000000' fill-opacity='0.12'/%3E%3Cline x1='12' y1='13' x2='12' y2='22'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: url(#crayon-rough);
+}
+.note-pin:hover::before {
+  transform: scale(1.15) rotate(-8deg);
+  transition: transform 0.15s;
+}
+
+/* pinned 便利贴：轻微高亮 + 不可拖拽光标 */
+.sticky-note[data-pinned="true"] {
+  cursor: default;
+}
+.sticky-note[data-pinned="true"]::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 1.5px dashed rgba(0, 0, 0, 0.25);
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 拖拽大头针时悬停高亮 */
+.sticky-note.pin-hover {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.28), 0 3px 4px rgba(0,0,0,0.07), 0 9px 18px -2px rgba(0,0,0,0.06), 0 14px 34px -10px rgba(0,0,0,0.11) !important;
 }

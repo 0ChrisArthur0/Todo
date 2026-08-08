@@ -29,6 +29,7 @@
     note.dataset.zone = zone;
     note.dataset.shape = task.shape || 'flat';
     note.dataset.hasNote = (task.note && task.note.length > 0) ? 'true' : 'false';
+    note.dataset.pinned = task.pinned ? 'true' : 'false';
 
     // 破损不规则便签边缘 clip-path（每边5点 + 随机±2.5%）— 持久化防编辑丢失
     if (!task.cp) {
@@ -112,6 +113,7 @@
         </div>
       </div>
       <span class="note-watermark" style="--wm-align:${wm.align}">${escapeHtml(wm.text)}</span>
+      <span class="note-pin${task.pinned ? ' pinned' : ''}" aria-hidden="true"></span>
       <span class="resize-handle" aria-hidden="true"></span>
     `;
 
@@ -124,11 +126,18 @@
       toggleComplete(task.id, zone);
     });
 
+    // 点击大头针 → 取消固定
+    note.querySelector('.note-pin').addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePin(task.id, zone);
+    });
+
     Interactions.bindLongPress(note, () => openEditModal(task.id, zone));
 
     note.addEventListener('click', (e) => {
       if (Interactions.wasLongPress()) return;
-      if (e.target.closest('.task-checkbox, .task-note-input')) return;
+      if (e.target.closest('.task-checkbox, .task-note-input, .note-pin')) return;
+      bringToFront(task.id, zone);
       AudioFX.play('paper');
     });
 
@@ -185,6 +194,7 @@
     note.dataset.zone = 'daily';
     note.dataset.color = color;
     note.dataset.hasNote = (item.note && item.note.length > 0) ? 'true' : 'false';
+    note.dataset.pinned = item.pinned ? 'true' : 'false';
 
     // 首次生成随机坐标
     if (item.x == null || item.y == null) {
@@ -244,6 +254,7 @@
         </button>
       </div>
       <span class="note-watermark" style="--wm-align:center">· DAILY · 今日 ·</span>
+      <span class="note-pin${item.pinned ? ' pinned' : ''}" aria-hidden="true"></span>
       <span class="resize-handle" aria-hidden="true"></span>
     `;
 
@@ -256,6 +267,12 @@
       DailySidebar.toggleDone(item.id);
     });
 
+    // 点击大头针 → 取消固定
+    note.querySelector('.note-pin').addEventListener('click', (e) => {
+      e.stopPropagation();
+      DailySidebar.togglePin(item.id);
+    });
+
     // 永久删除
     note.querySelector('.daily-note-delete').addEventListener('click', (e) => {
       e.stopPropagation();
@@ -263,7 +280,8 @@
     });
 
     note.addEventListener('click', (e) => {
-      if (e.target.closest('.task-checkbox, .daily-note-delete, .resize-handle, .task-note-input')) return;
+      if (e.target.closest('.task-checkbox, .daily-note-delete, .resize-handle, .task-note-input, .note-pin')) return;
+      bringToFront(item.id, 'daily');
       AudioFX.play('paper');
     });
 
@@ -309,24 +327,50 @@
     return note;
   }
 
+  /** 判定一个便利贴 DOM 当前是否处于「已完成」状态 */
+  function isDoneLayer(el) {
+    const zone = el.dataset && el.dataset.zone;
+    if (zone === 'done') return true;
+    if (zone === 'daily') return el.classList.contains('daily-done');
+    return false; // todo
+  }
+
+  /** 将便利贴插入到 wall 中，保证 DOM 顺序永远是：
+   *    [已完成组(有序) ···] · [未完成组(有序) ···]
+   *  从而配合 z-index(5/10) 确保已完成永远在未完成下方；
+   *  若已完成则插入到已完成组末尾（=组内最上，未完成组之前）；
+   *  若未完成则 appendChild 到 wall 末尾（=未完成组最上，全墙最顶）。
+   */
+  function insertByLayer(el) {
+    const wallEl = wall();
+    // 若 el 已在 wall 中，先从原位置摘除，再按层插入
+    if (el.parentNode === wallEl) wallEl.removeChild(el);
+    if (isDoneLayer(el)) {
+      // 找到第一个未完成元素，插在它之前
+      const children = Array.from(wallEl.children);
+      const firstUndone = children.find((c) => c.classList.contains('sticky-note') && !isDoneLayer(c));
+      if (firstUndone) wallEl.insertBefore(el, firstUndone);
+      else wallEl.appendChild(el);
+    } else {
+      wallEl.appendChild(el);
+    }
+  }
+
   function render() {
     const wallEl = wall();
     wallEl.querySelectorAll('.sticky-note').forEach((n) => n.remove());
 
-    data.todos.forEach((task) => {
-      wallEl.appendChild(createStickyNote(task, 'todo'));
-    });
-
-    data.done.forEach((task) => {
-      wallEl.appendChild(createStickyNote(task, 'done'));
-    });
-
-    // 每日待做便签（米白色，和普通便利贴一样可拖）
+    // 先批量创建 DOM，再按"已完成组 → 未完成组"顺序插入，确保每层 DOM 顺序与 z-index 都对齐
+    const allNotes = [];
+    data.todos.forEach((task) => allNotes.push(createStickyNote(task, 'todo')));
+    data.done.forEach((task)  => allNotes.push(createStickyNote(task, 'done')));
     if (data.dailyTodo && Array.isArray(data.dailyTodo.items)) {
-      data.dailyTodo.items.forEach((item) => {
-        wallEl.appendChild(createDailyNote(item));
-      });
+      data.dailyTodo.items.forEach((item) => allNotes.push(createDailyNote(item)));
     }
+    // 先插所有已完成（此时 wall 为空 → appendChild 都在前半段）
+    allNotes.filter(isDoneLayer).forEach((n) => wallEl.appendChild(n));
+    // 再插所有未完成（appendChild = 后半段 = 视觉顶层）
+    allNotes.filter((n) => !isDoneLayer(n)).forEach((n) => wallEl.appendChild(n));
 
     const isEmpty = data.todos.length === 0 && data.done.length === 0;
     $('#wall-empty').classList.toggle('visible', isEmpty);
@@ -431,9 +475,25 @@
       task.y = Math.round(y);
       list.unshift(task);
       persist();
-      // DOM 重新 appendChild，让被拖的便签排到同组最上层
       const el = document.querySelector(`.sticky-note[data-task-id="${id}"]`);
-      if (el) wall().appendChild(el);
+      if (el) insertByLayer(el); // 放到同层组顶部，保证已完成永远在未完成下方
+    }
+  }
+
+  /** 点击便签时置顶：把数组项移到头部 + DOM reinsert，跨组保持已完成在未完成下方 */
+  function bringToFront(id, zone) {
+    if (zone === 'daily') {
+      DailySidebar.bringToFront(id);
+      return;
+    }
+    const list = zone === 'todo' ? data.todos : data.done;
+    const idx = list.findIndex((t) => t.id === id);
+    if (idx !== -1) {
+      const [task] = list.splice(idx, 1);
+      list.unshift(task);
+      persist();
+      const el = document.querySelector(`.sticky-note[data-task-id="${id}"]`);
+      if (el) insertByLayer(el); // 放到同层组顶部，保证已完成永远在未完成下方
     }
   }
 
@@ -451,6 +511,21 @@
     moveTask(id, fromZone, fromZone === 'todo' ? 'done' : 'todo');
   }
 
+  /** 切换大头针固定状态（普通便利贴） */
+  function togglePin(id, zone) {
+    const list = zone === 'todo' ? data.todos : data.done;
+    const task = list.find((t) => t.id === id);
+    if (!task) return;
+    task.pinned = !task.pinned;
+    persist();
+    const el = document.querySelector(`.sticky-note[data-task-id="${id}"]`);
+    if (el) {
+      el.dataset.pinned = task.pinned ? 'true' : 'false';
+      el.querySelector('.note-pin')?.classList.toggle('pinned', task.pinned);
+    }
+    AudioFX.play(task.pinned ? 'complete' : 'paper');
+  }
+
   function moveTask(id, fromZone, toZone) {
     if (fromZone === toZone) return;
 
@@ -462,6 +537,7 @@
     const [task] = fromList.splice(idx, 1);
     if (toZone === 'done') {
       task.completedAt = Date.now();
+      task.pinned = false; // 完成时自动取下大头针
       AudioFX.play('complete');
     } else {
       delete task.completedAt;
@@ -1005,9 +1081,25 @@
       const it = data.dailyTodo.items.find((x) => x.id === id);
       if (!it) return;
       it.done = !it.done;
+      if (it.done) it.pinned = false; // 完成时自动取下大头针
       persist();
       render();
       if (AudioFX.play) AudioFX.play(it.done ? 'complete' : 'paper');
+    }
+
+    /** 切换大头针固定状态（每日便利贴） */
+    function togglePin(id) {
+      ensureData();
+      const it = data.dailyTodo.items.find((x) => x.id === id);
+      if (!it) return;
+      it.pinned = !it.pinned;
+      persist();
+      const el = document.querySelector(`.sticky-note[data-task-id="${id}"]`);
+      if (el) {
+        el.dataset.pinned = it.pinned ? 'true' : 'false';
+        el.querySelector('.note-pin')?.classList.toggle('pinned', it.pinned);
+      }
+      if (AudioFX.play) AudioFX.play(it.pinned ? 'complete' : 'paper');
     }
 
     function deleteItem(id) {
@@ -1024,11 +1116,29 @@
     /** 拖拽后更新坐标（由 StickyWall 回调调用） */
     function updatePosition(id, x, y) {
       ensureData();
-      const it = data.dailyTodo.items.find((x2) => x2.id === id);
-      if (!it) return;
+      const list = data.dailyTodo.items;
+      const idx = list.findIndex((x2) => x2.id === id);
+      if (idx === -1) return;
+      const [it] = list.splice(idx, 1);
       it.x = Math.round(x);
       it.y = Math.round(y);
+      list.unshift(it);
       persist();
+      const el = document.querySelector(`.sticky-note[data-task-id="${id}"]`);
+      if (el) insertByLayer(el); // 放到同层组顶部，保证已完成永远在未完成下方
+    }
+
+    /** 点击便签时置顶（由 bringToFront 转发调用） */
+    function bringToFront(id) {
+      ensureData();
+      const list = data.dailyTodo.items;
+      const idx = list.findIndex((x2) => x2.id === id);
+      if (idx === -1) return;
+      const [it] = list.splice(idx, 1);
+      list.unshift(it);
+      persist();
+      const el = document.querySelector(`.sticky-note[data-task-id="${id}"]`);
+      if (el) insertByLayer(el); // 放到同层组顶部，保证已完成永远在未完成下方
     }
 
     /** 缩放后更新尺寸（由 StickyWall 回调调用） */
@@ -1152,13 +1262,71 @@
       init,
       _clampPositionToViewport,
       toggleDone,
+      togglePin,
       deleteItem,
       updatePosition,
       updateSize,
       discard,
       updateNote,
+      bringToFront,
     };
   })();
+
+  /** 初始化大头针拖拽：从侧边栏拖到便利贴上 → 固定 */
+  function initPushpinDrag() {
+    const source = document.getElementById('pushpin-source');
+    if (!source) return;
+
+    source.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+
+      // 创建跟随光标的幽灵
+      const ghost = source.cloneNode(true);
+      ghost.classList.add('pushpin-ghost');
+      ghost.style.left = `${e.clientX}px`;
+      ghost.style.top = `${e.clientY}px`;
+      document.body.appendChild(ghost);
+
+      let hoverNote = null;
+
+      function onMove(ev) {
+        ghost.style.left = `${ev.clientX}px`;
+        ghost.style.top = `${ev.clientY}px`;
+        // 检测光标下的便利贴
+        ghost.style.pointerEvents = 'none';
+        const el = document.elementFromPoint(ev.clientX, ev.clientY);
+        const note = el?.closest('.sticky-note');
+        if (hoverNote && hoverNote !== note) {
+          hoverNote.classList.remove('pin-hover');
+          hoverNote = null;
+        }
+        if (note && note !== hoverNote) {
+          hoverNote = note;
+          note.classList.add('pin-hover');
+        }
+      }
+
+      function onUp(ev) {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        ghost.remove();
+        if (hoverNote) {
+          hoverNote.classList.remove('pin-hover');
+          const id = hoverNote.dataset.taskId;
+          const zone = hoverNote.dataset.zone;
+          if (id && zone === 'daily') {
+            if (hoverNote.dataset.pinned !== 'true') DailySidebar.togglePin(id);
+          } else if (id && (zone === 'todo' || zone === 'done')) {
+            if (hoverNote.dataset.pinned !== 'true') togglePin(id, zone);
+          }
+        }
+      }
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    });
+  }
 
   async function init() {
     await I18n.init();
@@ -1168,6 +1336,7 @@
     bindEvents();
     render();
     DailySidebar.init();
+    initPushpinDrag();
   }
 
   document.addEventListener('DOMContentLoaded', init);

@@ -53,5 +53,7 @@
   "dailyDelete": "Delete",
   "colorBeige": "Beige",
   "colorBlue": "Blue",
-  "colorPink": "Pink"
+  "colorPink": "Pink",
+  "pushpinHint": "Drag onto a note to pin it",
+  "pushpinLabel": "Drag to pin"
 }

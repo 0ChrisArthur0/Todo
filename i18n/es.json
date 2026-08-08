@@ -53,5 +53,7 @@
   "dailyDelete": "Borrar",
   "colorBeige": "Beige",
   "colorBlue": "Azul",
-  "colorPink": "Rosa"
+  "colorPink": "Rosa",
+  "pushpinHint": "Arrastra a una nota para fijarla",
+  "pushpinLabel": "Fijar"
 }
