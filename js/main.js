@@ -22,13 +22,56 @@
 
   function createStickyNote(task, zone) {
     const note = document.createElement('div');
-    note.className = `sticky-note${zone === 'done' ? ' done-note' : ''}`;
+    note.className = `sticky-note${zone === 'done' ? ' done-note' : ''} note-jitter`;
     note.dataset.taskId = task.id;
     note.dataset.zone = zone;
+    note.dataset.shape = task.shape || 'flat';
+
+    // 破损不规则便签边缘 clip-path（每边5点 + 随机±2.5%）— 持久化防编辑丢失
+    if (!task.cp) {
+      const pts = [];
+      const segs = 5;
+      for (let i = 0; i <= segs; i++) {
+        const x = (i / segs) * 100;
+        const y = Math.random() * 2.2;
+        pts.push(`${x.toFixed(2)}% ${y.toFixed(2)}%`);
+      }
+      for (let i = 1; i <= segs; i++) {
+        const x = 100 - Math.random() * 2.2;
+        const y = (i / segs) * 100;
+        pts.push(`${x.toFixed(2)}% ${y.toFixed(2)}%`);
+      }
+      for (let i = segs - 1; i >= 0; i--) {
+        const x = (i / segs) * 100;
+        const y = 100 - Math.random() * 2.2;
+        pts.push(`${x.toFixed(2)}% ${y.toFixed(2)}%`);
+      }
+      for (let i = segs - 1; i >= 1; i--) {
+        const x = Math.random() * 2.2;
+        const y = (i / segs) * 100;
+        pts.push(`${x.toFixed(2)}% ${y.toFixed(2)}%`);
+      }
+      task.cp = `polygon(${pts.join(', ')})`;
+    }
+    note.style.setProperty('--note-cp', task.cp);
+
+    // 抖动参数（慢速，克制不夸张）
+    note.style.setProperty('--j-dur', `${(5.5 + Math.random() * 9.5).toFixed(2)}s`);
+    note.style.setProperty('--j-delay', `${(Math.random() * 5.5).toFixed(2)}s`);
+    note.style.setProperty('--j-a', `${(0.22 + Math.random() * 0.68).toFixed(2)}deg`);
+    note.style.setProperty('--j-ease', Math.random() > 0.5
+      ? 'cubic-bezier(0.45,0.05,0.55,0.95)'
+      : 'cubic-bezier(0.5,0.1,0.5,0.9)');
+    // 边框抖动延迟（避免全部便签边框同步抖动）
+    note.style.setProperty('--nbw-delay', `${(Math.random() * 5.5).toFixed(2)}s`);
+    note.style.setProperty('--nbw-delay2', `${(Math.random() * 5.5).toFixed(2)}s`);
 
     const isDone = zone === 'done';
 
+    const wm = makeWatermark(task);
+
     note.innerHTML = `
+      <span class="sticky-shape-mark"></span>
       <div class="sticky-note-inner">
         <button type="button" class="task-checkbox${isDone ? ' checked' : ''}"
           data-i18n-aria="${isDone ? 'markUndone' : 'markDone'}"
@@ -48,6 +91,7 @@
           </div>
         </div>
       </div>
+      <span class="note-watermark" style="--wm-align:${wm.align}">${escapeHtml(wm.text)}</span>
     `;
 
     StickyWall.applyPosition(note, task);
@@ -64,6 +108,7 @@
     note.addEventListener('click', (e) => {
       if (Interactions.wasLongPress()) return;
       if (e.target.closest('.task-checkbox, .task-note-input')) return;
+      AudioFX.play('paper');
       toggleNoteInput(note);
     });
 
@@ -119,6 +164,30 @@
      CRUD
      ============================================================ */
 
+  const SHAPES = ['flat', 'corner-curl', 'crumple'];
+  function randomShape() {
+    return SHAPES[Math.floor(Math.random() * SHAPES.length)];
+  }
+
+  const WATERMARK_POOL = [
+    '· TO · DO · NOTE · MEMO ·', 'TODO · TODO · REMIND ·', 'to-do / memo / note',
+    '· 备 忘 · 记 事 · 清 单 ·', '待 办 · 清 单 · 备 忘',
+    '· À FAIRE · NOTE · MÉMO ·', 'à faire · mémo · liste',
+    '· POR HACER · NOTA ·', 'por hacer · memo · lista',
+    'list · reminder · check · do', '· note / memo / remind ·',
+    '— ✎ — write it down —', '- memo - jot it -',
+  ];
+  const WM_ALIGNS = ['left', 'center', 'right'];
+  function makeWatermark(task) {
+    if (!task.wm) {
+      task.wm = {
+        text: WATERMARK_POOL[Math.floor(Math.random() * WATERMARK_POOL.length)],
+        align: WM_ALIGNS[Math.floor(Math.random() * WM_ALIGNS.length)],
+      };
+    }
+    return task.wm;
+  }
+
   function addTask(text) {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -132,6 +201,7 @@
       x: pos.x,
       y: pos.y,
       rotation: pos.rotation,
+      shape: randomShape(),
     });
 
     AudioFX.play('add');
@@ -324,6 +394,19 @@
     Interactions.bindCollapse(data, persist);
     Interactions.bindInputAnimation();
 
+    // 侧栏折叠切换
+    const sidePanel = $('#side-panel');
+    const sideToggle = $('#side-panel-toggle');
+    if (sideToggle) {
+      if (data.collapsed.sidePanel) sidePanel.classList.add('collapsed');
+      sideToggle.addEventListener('click', () => {
+        const collapsed = sidePanel.classList.toggle('collapsed');
+        data.collapsed.sidePanel = collapsed;
+        AudioFX.play('collapse');
+        persist();
+      });
+    }
+
     StickyWall.init(wall(), {
       onMoveToDone: (id) => moveTask(id, 'todo', 'done'),
       onMoveToTodo: (id) => moveTask(id, 'done', 'todo'),
@@ -355,6 +438,7 @@
   async function init() {
     await I18n.init();
     AudioFX.init();
+    Music.init();
     bindEvents();
     render();
   }

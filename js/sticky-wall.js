@@ -146,10 +146,28 @@ const StickyWall = (() => {
     }
   }
 
-  /** 丢弃抛落消散动画 */
+  /** 飘落沉入桶内动画 */
   function animateDiscard(el, onDone) {
+    const zone = document.getElementById('discard-zone');
+    let dx = 0, dy = 0;
+    if (zone) {
+      const zr = zone.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const targetCx = zr.left + zr.width / 2;
+      const targetCy = zr.top + 6;
+      dx = targetCx - (elRect.left + elRect.width / 2);
+      dy = targetCy - elRect.top;
+    }
+    el.style.setProperty('--drop-x', `${dx}px`);
+    el.style.setProperty('--drop-y', `${dy}px`);
+    el.style.setProperty('--drop-r', `${(Math.random() - 0.5) * 40}deg`);
     el.classList.add('discarding');
     el.style.pointerEvents = 'none';
+
+    if (zone) {
+      setTimeout(() => zone.classList.add('trash-shake'), 420);
+      setTimeout(() => zone.classList.remove('trash-shake'), 940);
+    }
     setTimeout(() => {
       el.remove();
       onDone?.();
@@ -211,7 +229,10 @@ const StickyWall = (() => {
   function applyPosition(el, task) {
     el.style.left = `${task.x}px`;
     el.style.top = `${task.y}px`;
-    el.style.transform = `rotate(${task.rotation || 0}deg)`;
+    const r = task.rotation || 0;
+    el.style.setProperty('--note-rot', `${r}deg`);
+    el.style.setProperty('--cur-r', `${r}deg`);
+    el.style.transform = 'rotate(var(--note-rot))';
   }
 
   return { init, bindNote, applyPosition, animateDiscard, animateDiscardAll };

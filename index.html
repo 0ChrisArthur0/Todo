@@ -7,10 +7,33 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Patrick+Hand&family=Zeyada&family=Caveat:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Long+Cang&family=Klee+One:wght@400;600&family=Ma+Shan+Zheng&family=Patrick+Hand&family=Zeyada&family=Caveat:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/hand-drawn.css" />
 </head>
 <body class="min-h-screen bg-white text-black antialiased overflow-x-hidden">
+
+  <!-- 全局蜡笔手绘滤镜定义 -->
+  <svg width="0" height="0" class="crayon-defs" aria-hidden="true" focusable="false">
+    <defs>
+      <filter id="crayon-rough">
+        <feTurbulence type="fractalNoise" baseFrequency="0.018 0.045" numOctaves="2" seed="7" result="noise"/>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.4" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+      <filter id="crayon-soft">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.03" numOctaves="2" seed="3" result="noise"/>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.4" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+      <filter id="paper-crumple" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="3" seed="11" result="noise"/>
+        <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.18 0"/>
+        <feComposite operator="in" in2="SourceGraphic"/>
+      </filter>
+      <filter id="crayon-line">
+        <feTurbulence type="fractalNoise" baseFrequency="0.02 0.04" numOctaves="2" seed="9" result="noise"/>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="0.8" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </defs>
+  </svg>
 
   <!-- 低透明度黑白景物速写背景 -->
   <div class="bg-watermark" aria-hidden="true">
@@ -26,14 +49,31 @@
         <option value="zh">中文</option>
         <option value="en">English</option>
         <option value="fr">Français</option>
+        <option value="es">Español</option>
       </select>
     </label>
-    <button type="button" id="sound-toggle" class="control-sketch sound-btn font-body" data-enabled="true" aria-pressed="true">
+    <button type="button" id="sound-toggle" class="control-sketch sound-btn font-body" data-enabled="true" aria-pressed="true" data-i18n-title="soundOn">
       <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2">
         <path d="M3 8h3l4-3v10l-4-3H3V8z" stroke-linejoin="round"/>
         <path class="sound-wave" d="M13 7c1 1 1 5 0 6M15 5c2 2 2 8 0 10" stroke-linecap="round"/>
       </svg>
     </button>
+    <button type="button" id="music-toggle" class="control-sketch sound-btn font-body" data-enabled="false" aria-pressed="false" data-i18n-title="musicOff">
+      <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2">
+        <path d="M6 5v11M6 5l9-2v11" stroke-linejoin="round"/>
+        <circle cx="5" cy="16" r="2.2"/>
+        <circle cx="14" cy="14" r="2.2"/>
+      </svg>
+    </button>
+    <button type="button" id="music-swap" class="control-sketch font-body song-swap-btn" aria-label="Change music track" title="Next track">
+      <span class="song-idx font-title">01</span>
+    </button>
+    <label class="control-sketch music-volume-wrap font-body" data-i18n-title="musicVolume">
+      <svg class="h-3.5 w-3.5 opacity-50" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
+        <path d="M3 6h2l3-2v8l-3-2H3V6z" stroke-linejoin="round"/>
+      </svg>
+      <input id="music-volume" type="range" min="0" max="100" value="30" class="music-volume" aria-label="Music volume" />
+    </label>
   </div>
 
   <div id="app" class="relative z-10 lang-visible">
@@ -46,7 +86,7 @@
             <path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           <div>
-            <h1 class="font-title text-3xl sm:text-4xl" data-i18n="title">清单</h1>
+            <h1 class="font-title text-5xl sm:text-6xl" data-i18n="title">清单</h1>
             <p class="font-body text-xs opacity-40 tracking-widest" data-i18n="subtitle">便利贴墙</p>
           </div>
         </div>
@@ -74,50 +114,58 @@
       <p id="wall-empty" class="wall-empty font-body pointer-events-none absolute inset-0 flex items-center justify-center text-sm opacity-25" data-i18n="emptyTodo">暂无待办，添一张便签吧</p>
     </main>
 
-    <!-- ③ 底部放置区 -->
-    <div class="drop-zones fixed bottom-0 left-0 right-0 z-30 flex items-end justify-center gap-3 px-4 pb-4 sm:gap-5 sm:px-8 sm:pb-6">
+    <!-- ③ 右侧侧栏：收纳区 + 统计 + 清空 -->
+    <aside id="side-panel" class="side-panel">
+      <button type="button" id="side-panel-toggle" class="side-panel-toggle" aria-label="Toggle side panel">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M10 4 L6 8 L10 12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div id="done-zone" class="drop-zone zone-done flex flex-col items-center justify-center gap-1 px-3 py-3" data-zone="done">
+        <span class="panel-title font-body" data-i18n="doneZone">收纳区</span>
+        <span id="done-count" class="count-badge font-body">0</span>
+        <button type="button" id="clear-done-btn" class="clear-btn font-body" data-i18n="clear">清空</button>
+      </div>
+      <div class="side-stats font-body">
+        <span class="panel-title font-body" style="margin-bottom:2px;" data-i18n="statTotal">总任务</span>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="statTotal">总任务</span>
+          <span id="stat-total" class="stat-num font-title">0</span>
+        </div>
+        <div class="stat-sep"></div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="statDone">已完成</span>
+          <span id="stat-done" class="stat-num font-title">0</span>
+        </div>
+        <div class="stat-sep"></div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="statRate">完成率</span>
+          <span id="stat-rate" class="stat-num font-title">0%</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ④ 底部放置区（只剩 todo + discard） -->
+    <div class="drop-zones two-only fixed bottom-0 left-0 right-0 z-30 flex items-end justify-center gap-3 px-4 pb-4 sm:gap-5 sm:px-8 sm:pb-6">
       <div id="todo-zone" class="drop-zone sketch-frame zone-todo" data-zone="todo">
         <span class="font-body text-[10px] tracking-widest opacity-50" data-i18n="todoZone">待办区</span>
         <span id="todo-count" class="count-badge font-body">0</span>
       </div>
-      <div id="done-zone" class="drop-zone sketch-frame zone-done" data-zone="done">
-        <span class="font-body text-[10px] tracking-widest opacity-50" data-i18n="doneZone">收纳区</span>
-        <span id="done-count" class="count-badge font-body">0</span>
-        <button type="button" id="clear-done-btn" class="clear-btn font-body text-[9px] opacity-40 hover:opacity-70" data-i18n="clear">清空</button>
-      </div>
-      <div id="discard-zone" class="drop-zone sketch-frame zone-discard" data-zone="discard">
-        <span class="font-body text-[10px] tracking-widest opacity-50" data-i18n="discardZone">丢弃区</span>
-        <span class="font-body text-[9px] opacity-30" data-i18n="discardHint">拖入丢弃</span>
+      <div id="discard-zone" class="drop-zone zone-discard" data-zone="discard">
+        <svg class="trash-can" viewBox="0 0 48 56" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M6 11.5 L42.5 12.8" />
+          <path d="M19 11.5 L18.4 8.2 Q17.8 6.3 20.8 5.8 L27.2 6.1 Q29.5 5.9 30 8.4 L29.4 12" />
+          <path d="M11.2 12 L13.6 49 Q14 52.2 17 52.1 L31.4 52 Q34.5 52.4 34.8 48.8 L38 12.5" />
+          <path d="M18.4 16.2 L19.6 47.2" />
+          <path d="M24.2 17 L23.6 48.4" />
+          <path d="M29.8 16.6 L28.2 47.8" />
+          <path d="M8 12.5 L9.6 10.8 M14 11 L41.5 12.2" stroke-width="0.9" opacity="0.4"/>
+          <path d="M15.8 48.2 Q22 50.2 28 48 Q32 49.5 33.5 48.5" stroke-width="0.8" opacity="0.35"/>
+          <path d="M10 11 L44 13" stroke-width="0.6" opacity="0.25"/>
+        </svg>
+        <span class="font-body text-[9px] tracking-widest opacity-40 mt-0.5" data-i18n="discardZone">丢弃区</span>
       </div>
     </div>
-
-    <!-- ④ 底部统计（可折叠） -->
-    <footer class="stats-panel sketch-frame mx-4 mb-28 sm:mx-8 sm:mb-32" data-panel="stats">
-      <button type="button" class="panel-header flex w-full items-center justify-center gap-2 px-5 py-3" data-collapse="stats">
-        <svg class="chevron h-3 w-3 opacity-40 transition-transform duration-300" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2">
-          <path d="M4 6l4 4 4-4" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-      <div class="panel-body px-5 pb-5" data-body="stats">
-        <div class="stats-divider mb-4"></div>
-        <div class="flex flex-wrap items-center justify-center gap-8 sm:gap-14">
-          <div class="stat-item text-center">
-            <span id="stat-total" class="stat-num font-title text-2xl">0</span>
-            <span class="stat-label font-body mt-1 block text-[10px] opacity-40 tracking-widest" data-i18n="statTotal">总任务</span>
-          </div>
-          <div class="stat-sep hidden h-7 w-px bg-black/10 sm:block"></div>
-          <div class="stat-item text-center">
-            <span id="stat-done" class="stat-num font-title text-2xl">0</span>
-            <span class="stat-label font-body mt-1 block text-[10px] opacity-40 tracking-widest" data-i18n="statDone">已完成</span>
-          </div>
-          <div class="stat-sep hidden h-7 w-px bg-black/10 sm:block"></div>
-          <div class="stat-item text-center">
-            <span id="stat-rate" class="stat-num font-title text-2xl">0%</span>
-            <span class="stat-label font-body mt-1 block text-[10px] opacity-40 tracking-widest" data-i18n="statRate">完成率</span>
-          </div>
-        </div>
-      </div>
-    </footer>
 
   </div>
 

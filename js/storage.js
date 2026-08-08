@@ -9,7 +9,7 @@ const Storage = (() => {
   const defaultData = () => ({
     todos: [],
     done: [],
-    collapsed: { header: false, stats: false },
+    collapsed: { header: false, stats: false, sidePanel: false },
   });
 
   /** 为新任务生成随机墙内坐标 */
@@ -25,13 +25,17 @@ const Storage = (() => {
     };
   }
 
-  /** 迁移旧数据：补全坐标字段 */
+  /** 迁移旧数据：补全坐标字段 + 便签形态 */
   function migrateTask(task, zone) {
     if (task.x == null || task.y == null) {
       const pos = randomPosition(zone);
       task.x = pos.x;
       task.y = pos.y;
       task.rotation = task.rotation ?? pos.rotation;
+    }
+    if (!task.shape) {
+      const shapes = ['flat', 'corner-curl', 'crumple'];
+      task.shape = shapes[Math.floor(Math.random() * shapes.length)];
     }
     return task;
   }
@@ -44,10 +48,10 @@ const Storage = (() => {
       const data = {
         todos: (Array.isArray(parsed.todos) ? parsed.todos : []).map((t) => migrateTask(t, 'todo')),
         done: (Array.isArray(parsed.done) ? parsed.done : []).map((t) => migrateTask(t, 'done')),
-        collapsed: parsed.collapsed || { header: false, stats: false },
+        collapsed: parsed.collapsed || { header: false, stats: false, sidePanel: false },
       };
       if (parsed.collapsed?.todo !== undefined) {
-        data.collapsed = { header: false, stats: false };
+        data.collapsed = { header: false, stats: false, sidePanel: false };
       }
       return data;
     } catch {

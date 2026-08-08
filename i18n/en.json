@@ -8,7 +8,7 @@
   "clear": "Clear",
   "todoZone": "To-do",
   "doneZone": "Done",
-  "discardZone": "Discard",
+  "discardZone": "Trash",
   "discardHint": "Drop to discard",
   "emptyTodo": "No tasks yet — add a note",
   "emptyDone": "Nothing completed yet",
@@ -28,5 +28,8 @@
   "markUndone": "Mark undone",
   "soundOn": "Sound on",
   "soundOff": "Sound off",
+  "musicOn": "Music on",
+  "musicOff": "Music off",
+  "musicVolume": "Music volume",
   "langLabel": "Language"
 }
