@@ -20,7 +20,7 @@ const I18n = (() => {
 
   function getStoredLang() {
     const stored = localStorage.getItem(LANG_KEY);
-    return SUPPORTED.includes(stored) ? stored : 'zh';
+    return SUPPORTED.includes(stored) ? stored : 'en';
   }
 
   function saveLang(lang) {
@@ -29,7 +29,7 @@ const I18n = (() => {
 
   /** 加载指定语言 JSON */
   async function load(lang) {
-    const target = SUPPORTED.includes(lang) ? lang : 'zh';
+    const target = SUPPORTED.includes(lang) ? lang : 'en';
     try {
       const res = await fetch(`i18n/${target}.json`);
       if (!res.ok) throw new Error('fetch failed');

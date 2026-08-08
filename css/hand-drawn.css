@@ -7,7 +7,7 @@
 @font-face {
   font-family: 'ChenYuluoyan';
   src: url('https://cdn.jsdelivr.net/npm/@fontpkg/chenyuluoyan@1.0.0/ChenYuluoyan-Thin.ttf') format('truetype');
-  font-weight: 100;
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
@@ -54,9 +54,24 @@ body[data-lang="ja"] .font-body {
 body[data-lang="en"] .font-body,
 body[data-lang="es"] .font-body,
 body[data-lang="fr"] .font-body {
-  font-family: 'Nothing You Could Do', 'Caveat', 'Patrick Hand', cursive;
+  font-family: 'ChenYuluoyan', 'Nothing You Could Do', 'Caveat', 'Patrick Hand', cursive;
+  font-weight: 100;
   font-size: 1.08em;
   line-height: 1.5;
+}
+
+/* 便签内文本：特异性更高（.sticky-note .task-text.font-body），需定向覆盖 */
+body[data-lang="en"] .sticky-note .task-text.font-body,
+body[data-lang="es"] .sticky-note .task-text.font-body,
+body[data-lang="fr"] .sticky-note .task-text.font-body,
+body[data-lang="en"] .sticky-note .task-note-input.font-body,
+body[data-lang="es"] .sticky-note .task-note-input.font-body,
+body[data-lang="fr"] .sticky-note .task-note-input.font-body,
+body[data-lang="en"] .sticky-note .task-note-display.font-body,
+body[data-lang="es"] .sticky-note .task-note-display.font-body,
+body[data-lang="fr"] .sticky-note .task-note-display.font-body {
+  font-family: 'ChenYuluoyan', 'Nothing You Could Do', 'Caveat', 'Patrick Hand', cursive;
+  font-weight: 100;
 }
 
 .crayon-defs {
@@ -193,7 +208,7 @@ body[data-bg="kraft"] .bg-img {
   position: fixed;
   top: 1rem;
   right: 1rem;
-  z-index: 50;
+  z-index: 100;
   display: flex;
   align-items: center;
   gap: 0.5rem;
