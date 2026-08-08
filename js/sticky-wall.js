@@ -152,7 +152,7 @@ const StickyWall = (() => {
     } else if (dropZone === 'todo' && zone === 'done') {
       AudioFX.play('drop');
       callbacks.onMoveToTodo?.(id);
-    } else if (dropZone === 'discard' && zone === 'done') {
+    } else if (dropZone === 'discard') {
       animateDiscard(el, () => {
         AudioFX.play('discard');
         callbacks.onDiscard?.(id);
@@ -161,8 +161,9 @@ const StickyWall = (() => {
       const x = parseFloat(el.style.left) || 0;
       const y = parseFloat(el.style.top) || 0;
       AudioFX.play('drop');
-      applyInertia(el, x, y);
+      const inertiaStarted = applyInertia(el, x, y);
       callbacks.onReposition?.(id, zone, x, y);
+      if (!inertiaStarted) el.style.zIndex = '';
     }
 
     activeNote = null;
@@ -190,6 +191,7 @@ const StickyWall = (() => {
       if (Math.abs(vx) > 0.3 || Math.abs(vy) > 0.3) {
         inertiaFrame = requestAnimationFrame(step);
       } else {
+        el.style.zIndex = '';
         const id = el.dataset.taskId;
         const zone = el.dataset.zone;
         callbacks.onReposition?.(id, zone, px, py);
@@ -198,7 +200,9 @@ const StickyWall = (() => {
 
     if (Math.abs(vx) > 1 || Math.abs(vy) > 1) {
       inertiaFrame = requestAnimationFrame(step);
+      return true;
     }
+    return false;
   }
 
   /** 飘落沉入桶内动画 */
@@ -263,7 +267,7 @@ const StickyWall = (() => {
     const valid =
       (detected === 'done' && fromZone === 'todo') ||
       (detected === 'todo' && fromZone === 'done') ||
-      (detected === 'discard' && fromZone === 'done');
+      detected === 'discard';
 
     if (valid) {
       document.getElementById(`${detected}-zone`)?.classList.add('zone-active');

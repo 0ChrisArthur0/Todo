@@ -255,11 +255,16 @@
 
   function updatePosition(id, zone, x, y) {
     const list = zone === 'todo' ? data.todos : data.done;
-    const task = list.find((t) => t.id === id);
-    if (task) {
+    const idx = list.findIndex((t) => t.id === id);
+    if (idx !== -1) {
+      const [task] = list.splice(idx, 1);
       task.x = Math.round(x);
       task.y = Math.round(y);
+      list.unshift(task);
       persist();
+      // DOM 重新 appendChild，让被拖的便签排到同组最上层
+      const el = document.querySelector(`.sticky-note[data-task-id="${id}"]`);
+      if (el) wall().appendChild(el);
     }
   }
 
@@ -306,8 +311,12 @@
   }
 
   function discardTask(id) {
-    const idx = data.done.findIndex((t) => t.id === id);
-    if (idx !== -1) data.done.splice(idx, 1);
+    let idx = data.todos.findIndex((t) => t.id === id);
+    if (idx !== -1) data.todos.splice(idx, 1);
+    else {
+      idx = data.done.findIndex((t) => t.id === id);
+      if (idx !== -1) data.done.splice(idx, 1);
+    }
     persist();
     render();
   }
