@@ -299,204 +299,605 @@ const Music = (() => {
   let fadeTimer = null;
 
   const TRACKS = [
-    // ————— 5 首舒缓柔和的纯音乐，单旋律 + 单弱底音，无雨声/无叠部 —————
-    //
-    // 01 · Gentle Sun — C 大调五声稀疏琶音 + 单 C2 底音
+    // ————— 5 首悠扬多层次 ambient 纯音乐 —————
+    // 层次结构（每首 4~5 层，音量克制，避免叠加爆音）：
+    //   [BASS] 持续低频底音（sine + 呼吸 LFO）
+    //   [PAD]   缓慢变化的和弦长音（3 音叠加 triad，长 attack 长 release）
+    //   [MELODY A] 主悠扬旋律（单音 + 同步 3/5 度和声，间隔 ~1.6~2.6s，长衰减）
+    //   [MELODY B] 对位/回声旋律（比 A 晚 280ms，高 1~2 级或高八度，轻音量，营造空间萦绕）
+    //   [BELL]    高音风铃点缀（仅 Gentle Sun / Moon Light 加，音量极轻）
+
+    // ========== 01 · Gentle Sun — C 大调五声，明亮温暖 ==========
     function gentleSun(ac, out) {
       const timers = [];
-      // 单底音 C2（极弱，呼吸式起伏）
+      const liveNodes = [];
+      const track = (fn) => liveNodes.push(fn);
+
+      // —— [BASS] 持续 C2 + C3 八度底音，LFO 呼吸 ——
       const bass = ac.createOscillator();
+      const bass2 = ac.createOscillator();
       const bG = ac.createGain();
-      bass.type = 'sine';
-      bass.frequency.value = 65.41;
+      bass.type = 'sine'; bass.frequency.value = 65.41;
+      bass2.type = 'sine'; bass2.frequency.value = 130.81;
       bG.gain.value = 0;
-      bass.connect(bG); bG.connect(out);
+      bass.connect(bG); bass2.connect(bG); bG.connect(out);
       const now0 = ac.currentTime;
-      bG.gain.linearRampToValueAtTime(0.045, now0 + 4);
-      bass.start();
+      bG.gain.linearRampToValueAtTime(0.05, now0 + 5);
+      bass.start(); bass2.start();
+      track(() => { try { bass.stop(); } catch {} try { bass2.stop(); } catch {} });
       const lfo = ac.createOscillator();
       const lfoG = ac.createGain();
-      lfo.frequency.value = 0.04;
-      lfoG.gain.value = 0.015;
+      lfo.frequency.value = 0.038;
+      lfoG.gain.value = 0.018;
       lfo.connect(lfoG); lfoG.connect(bG.gain);
       lfo.start();
-      // 稀疏五声琶音：每次 1 个音，长衰减
-      const step = () => {
+      track(() => { try { lfo.stop(); } catch {} });
+
+      // —— [PAD] C → Am → F → G 缓慢和弦长音（每 8.5s 换一个） ——
+      const padChords = [
+        [65.41, 82.41, 98.00],    // C2/E2/G2
+        [55.00, 65.41, 82.41],    // A1/C2/E2 (Am)
+        [43.65, 55.00, 65.41],    // F1/A1/C2
+        [49.00, 61.74, 73.42],    // G1/B1/D2
+      ];
+      (function padLoop(idx = 0) {
         if (!out) return;
-        const f = PENTATONIC[Math.floor(Math.random() * PENTATONIC.length)];
+        const chord = padChords[idx % padChords.length];
+        const gain = ac.createGain();
+        gain.gain.value = 0;
+        gain.connect(out);
+        const now = ac.currentTime;
+        chord.forEach(freq => {
+          const o1 = ac.createOscillator(); const o2 = ac.createOscillator();
+          o1.type = 'sine'; o1.frequency.value = freq;
+          o2.type = 'triangle'; o2.frequency.value = freq * 2; // 高八度叠一点亮度
+          const oG = ac.createGain();
+          oG.gain.value = 0;
+          o1.connect(oG); o2.connect(oG); oG.connect(gain);
+          // 每个和弦音独立的增益，音量 0.013 → 2s attack → hold 6.5s → 4s release
+          const base = 0.014;
+          oG.gain.setValueAtTime(0, now);
+          oG.gain.linearRampToValueAtTime(base * 0.55, now + 3.4);
+          oG.gain.linearRampToValueAtTime(base * 0.38, now + 5);
+          oG.gain.exponentialRampToValueAtTime(0.0008, now + 8.6);
+          track(() => { try { o1.stop(); } catch {} try { o2.stop(); } catch {} });
+          o1.start(now); o2.start(now);
+          o1.stop(now + 8.8); o2.stop(now + 8.8);
+        });
+        // 总 Pad 门控增益：避免换和弦时爆音
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(1, now + 3.5);
+        gain.gain.linearRampToValueAtTime(0.7, now + 5);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 8.6);
+        timers.push(setTimeout(() => padLoop(idx + 1), 8500));
+      })();
+
+      // —— [MELODY A] 主悠扬旋律（C 五声，每音带 3 度和声） ——
+      const C_PENT = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+      const melodyStep = () => {
+        if (!out) return;
+        const idx = Math.floor(Math.random() * C_PENT.length);
+        const f1 = C_PENT[idx];
+        const fHarm = C_PENT[Math.min(C_PENT.length - 1, idx + 2)]; // 3/4 度和声
+        const fHi = Math.random() < 0.3 ? f1 * 2 : null; // 偶尔高八度
+        const now = ac.currentTime;
+        const mkNote = (freq, vol, attack, decayTime, type) => {
+          const osc = ac.createOscillator();
+          const g = ac.createGain();
+          osc.type = type;
+          osc.frequency.value = freq;
+          g.gain.setValueAtTime(0, now);
+          g.gain.linearRampToValueAtTime(vol, now + attack);
+          g.gain.linearRampToValueAtTime(vol * 0.6, now + attack + 1.6);
+          g.gain.exponentialRampToValueAtTime(0.001, now + decayTime);
+          osc.connect(g); g.connect(out);
+          osc.start(now); osc.stop(now + decayTime + 0.15);
+          track(() => { try { osc.stop(); } catch {} });
+        };
+        mkNote(f1,    0.05,  1.0, 6.4, 'triangle'); // 主音：triangle 温暖
+        mkNote(fHarm, 0.028, 1.1, 6.2, 'sine');     // 和声：sine 轻，不抢主旋律
+        if (fHi) mkNote(fHi, 0.014, 1.2, 6.0, 'sine');
+
+        // —— [MELODY B] 回声对位（280ms 后，同一音阶但不同音） ——
+        timers.push(setTimeout(() => {
+          if (!out) return;
+          const idxB = (idx + 3 + Math.floor(Math.random() * 3)) % C_PENT.length;
+          const fb = C_PENT[idxB] * (Math.random() < 0.5 ? 1 : 2);
+          const t2 = ac.currentTime;
+          const osc = ac.createOscillator();
+          const g = ac.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = fb;
+          g.gain.setValueAtTime(0, t2);
+          g.gain.linearRampToValueAtTime(0.026, t2 + 0.9);
+          g.gain.linearRampToValueAtTime(0.018, t2 + 2.4);
+          g.gain.exponentialRampToValueAtTime(0.001, t2 + 5.8);
+          osc.connect(g); g.connect(out);
+          osc.start(t2); osc.stop(t2 + 5.95);
+          track(() => { try { osc.stop(); } catch {} });
+        }, 280));
+
+        timers.push(setTimeout(melodyStep, 1900 + Math.random() * 1600));
+      };
+      melodyStep();
+
+      // —— [BELL] 高音风铃（800~1400Hz，随机稀疏，音量极轻） ——
+      const bellStep = () => {
+        if (!out) return;
+        const BELLS = [880.00, 1046.50, 1174.66, 1318.51, 1567.98];
+        const f = BELLS[Math.floor(Math.random() * BELLS.length)];
+        const now = ac.currentTime;
         const osc = ac.createOscillator();
         const g = ac.createGain();
-        osc.type = 'triangle';
+        osc.type = 'sine';
         osc.frequency.value = f;
-        const now = ac.currentTime;
         g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(0.05, now + 0.9);
-        g.gain.linearRampToValueAtTime(0.03, now + 2.6);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 5.6);
+        g.gain.linearRampToValueAtTime(0.008, now + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0005, now + 2.6);
         osc.connect(g); g.connect(out);
-        osc.start(now); osc.stop(now + 5.7);
-        timers.push(setTimeout(step, 2800 + Math.random() * 2600));
+        osc.start(now); osc.stop(now + 2.7);
+        track(() => { try { osc.stop(); } catch {} });
+        timers.push(setTimeout(bellStep, 5500 + Math.random() * 6000));
       };
-      step();
+      timers.push(setTimeout(bellStep, 4000));
+
       return () => {
         timers.forEach(clearTimeout);
-        try { bass.stop(); } catch { /* noop */ }
-        try { lfo.stop(); } catch { /* noop */ }
+        liveNodes.forEach(fn => { try { fn && fn(); } catch {} });
       };
     },
 
-    // 02 · Soft Breeze — A 小调柔和旋律（音阶 A C D E G） + 单 A2 底音
+    // ========== 02 · Soft Breeze — a 小调，柔和下行、略带忧伤 ==========
     function softBreeze(ac, out) {
       const timers = [];
-      const AM_SCALE = [220.00, 261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33];
+      const liveNodes = [];
+      const track = (fn) => liveNodes.push(fn);
+
+      // —— [BASS] A2 + E3 底音 ——
       const bass = ac.createOscillator();
+      const bass2 = ac.createOscillator();
       const bG = ac.createGain();
-      bass.type = 'sine';
-      bass.frequency.value = 110.0; // A2
+      bass.type = 'sine'; bass.frequency.value = 110.0;
+      bass2.type = 'sine'; bass2.frequency.value = 164.81;
       bG.gain.value = 0;
-      bass.connect(bG); bG.connect(out);
+      bass.connect(bG); bass2.connect(bG); bG.connect(out);
       const now0 = ac.currentTime;
-      bG.gain.linearRampToValueAtTime(0.04, now0 + 3.6);
-      bass.start();
-      const step = () => {
+      bG.gain.linearRampToValueAtTime(0.048, now0 + 5);
+      bass.start(); bass2.start();
+      track(() => { try { bass.stop(); } catch {} try { bass2.stop(); } catch {} });
+
+      // —— [PAD] Am → F → C → G ——
+      const padChords = [
+        [55.00, 65.41, 82.41],    // A1/C2/E2
+        [43.65, 55.00, 65.41],    // F1/A1/C2
+        [65.41, 82.41, 98.00],    // C2/E2/G2
+        [49.00, 61.74, 73.42],    // G1/B1/D2
+      ];
+      (function padLoop(idx = 0) {
         if (!out) return;
-        const f = AM_SCALE[Math.floor(Math.random() * AM_SCALE.length)];
-        const osc = ac.createOscillator();
-        const g = ac.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = f;
+        const chord = padChords[idx % padChords.length];
+        const gain = ac.createGain();
+        gain.connect(out);
         const now = ac.currentTime;
-        g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(0.06, now + 1.1);
-        g.gain.linearRampToValueAtTime(0.04, now + 3);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 6);
-        osc.connect(g); g.connect(out);
-        osc.start(now); osc.stop(now + 6.1);
-        timers.push(setTimeout(step, 3200 + Math.random() * 2600));
+        chord.forEach(freq => {
+          const o1 = ac.createOscillator(); const o2 = ac.createOscillator();
+          o1.type = 'sine'; o1.frequency.value = freq;
+          o2.type = 'sine'; o2.frequency.value = freq * 2;
+          const oG = ac.createGain();
+          oG.gain.value = 0;
+          o1.connect(oG); o2.connect(oG); oG.connect(gain);
+          const base = 0.013;
+          oG.gain.setValueAtTime(0, now);
+          oG.gain.linearRampToValueAtTime(base * 0.5, now + 3.8);
+          oG.gain.linearRampToValueAtTime(base * 0.35, now + 5.4);
+          oG.gain.exponentialRampToValueAtTime(0.0008, now + 9.2);
+          o1.start(now); o2.start(now);
+          o1.stop(now + 9.4); o2.stop(now + 9.4);
+          track(() => { try { o1.stop(); } catch {} try { o2.stop(); } catch {} });
+        });
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(1, now + 4);
+        gain.gain.linearRampToValueAtTime(0.72, now + 5.6);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 9.2);
+        timers.push(setTimeout(() => padLoop(idx + 1), 8900));
+      })();
+
+      // —— [MELODY A] a 自然小调（主音 + 3 度和声） ——
+      const AM = [220.00, 246.94, 261.63, 293.66, 329.63, 392.00, 440.00, 493.88];
+      const melodyStep = () => {
+        if (!out) return;
+        // 偏好下行（小调感）：从高往低选择
+        const idx = Math.floor(Math.random() * AM.length);
+        const idxH = Math.max(0, idx - 2 + Math.floor(Math.random() * 2));
+        const f1 = AM[idx] * (Math.random() < 0.45 ? 2 : 1);
+        const fHarm = AM[idxH] * (f1 >= 400 ? 1 : 2);
+        const now = ac.currentTime;
+        const mkNote = (freq, vol, atk, dec, typ) => {
+          const osc = ac.createOscillator(); const g = ac.createGain();
+          osc.type = typ; osc.frequency.value = freq;
+          g.gain.setValueAtTime(0, now);
+          g.gain.linearRampToValueAtTime(vol, now + atk);
+          g.gain.linearRampToValueAtTime(vol * 0.55, now + atk + 2);
+          g.gain.exponentialRampToValueAtTime(0.001, now + dec);
+          osc.connect(g); g.connect(out);
+          osc.start(now); osc.stop(now + dec + 0.15);
+          track(() => { try { osc.stop(); } catch {} });
+        };
+        mkNote(f1,    0.052, 1.1, 6.6, 'sine');
+        mkNote(fHarm, 0.026, 1.25, 6.4, 'sine');
+
+        // —— [MELODY B] 回声（300ms 后，稍高或稍低） ——
+        timers.push(setTimeout(() => {
+          if (!out) return;
+          const idxB = (idx + 1) % AM.length;
+          const fb = AM[idxB] * (Math.random() < 0.5 ? 1 : 2);
+          const t2 = ac.currentTime;
+          const osc = ac.createOscillator(); const g = ac.createGain();
+          osc.type = 'sine'; osc.frequency.value = fb;
+          g.gain.setValueAtTime(0, t2);
+          g.gain.linearRampToValueAtTime(0.024, t2 + 1.0);
+          g.gain.linearRampToValueAtTime(0.016, t2 + 2.8);
+          g.gain.exponentialRampToValueAtTime(0.001, t2 + 6.0);
+          osc.connect(g); g.connect(out);
+          osc.start(t2); osc.stop(t2 + 6.15);
+          track(() => { try { osc.stop(); } catch {} });
+        }, 300));
+
+        timers.push(setTimeout(melodyStep, 2100 + Math.random() * 1500));
       };
-      step();
+      melodyStep();
+
       return () => {
         timers.forEach(clearTimeout);
-        try { bass.stop(); } catch { /* noop */ }
+        liveNodes.forEach(fn => { try { fn && fn(); } catch {} });
       };
     },
 
-    // 03 · Warm Paper — F 大调三和弦单音 + 单 F2 底音（柔和、温暖）
+    // ========== 03 · Warm Paper — F 大调，温暖纸质，和音叠得更饱满 ==========
     function warmPaper(ac, out) {
       const timers = [];
-      const F_MAJ = [174.61, 196.00, 220.00, 233.08, 261.63, 293.66, 329.63, 349.23];
+      const liveNodes = [];
+      const track = (fn) => liveNodes.push(fn);
+
+      // —— [BASS] F2 + C3（属音叠底，温暖） ——
       const bass = ac.createOscillator();
+      const bass2 = ac.createOscillator();
       const bG = ac.createGain();
-      bass.type = 'sine';
-      bass.frequency.value = 87.31; // F2
+      bass.type = 'sine'; bass.frequency.value = 87.31;
+      bass2.type = 'sine'; bass2.frequency.value = 130.81;
       bG.gain.value = 0;
-      bass.connect(bG); bG.connect(out);
+      bass.connect(bG); bass2.connect(bG); bG.connect(out);
       const now0 = ac.currentTime;
-      bG.gain.linearRampToValueAtTime(0.04, now0 + 3.8);
-      bass.start();
-      const step = () => {
+      bG.gain.linearRampToValueAtTime(0.046, now0 + 4.6);
+      bass.start(); bass2.start();
+      track(() => { try { bass.stop(); } catch {} try { bass2.stop(); } catch {} });
+
+      // —— [PAD] F → Dm → Bb → C ——
+      const padChords = [
+        [43.65, 55.00, 65.41],    // F1/A1/C2
+        [36.71, 44.00, 55.00],    // D1/F#1/A1 (Dm — 降低一度 36.71=D2, 修正 D1=18.35)
+        [58.27, 73.42, 87.31],    // Bb1/D2/F2 (58.27≈Bb1)
+        [65.41, 82.41, 98.00],    // C2/E2/G2
+      ];
+      // 修正 Dm 为准确数值
+      padChords[1] = [73.42, 87.31, 110.00]; // D2/F2/A2
+      padChords[2] = [58.27, 73.42, 87.31];
+
+      (function padLoop(idx = 0) {
         if (!out) return;
-        const base = F_MAJ[Math.floor(Math.random() * F_MAJ.length)];
-        const oct = Math.random() < 0.6 ? 1 : 2;
-        const f = base * oct;
-        const osc = ac.createOscillator();
-        const g = ac.createGain();
-        osc.type = 'triangle';
-        osc.frequency.value = f;
+        const chord = padChords[idx % padChords.length];
+        const gain = ac.createGain();
+        gain.connect(out);
         const now = ac.currentTime;
-        g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(0.045, now + 0.7);
-        g.gain.linearRampToValueAtTime(0.03, now + 2.4);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 5.2);
-        osc.connect(g); g.connect(out);
-        osc.start(now); osc.stop(now + 5.3);
-        timers.push(setTimeout(step, 3000 + Math.random() * 2400));
+        chord.forEach(freq => {
+          const o1 = ac.createOscillator(); const o2 = ac.createOscillator();
+          o1.type = 'triangle'; o1.frequency.value = freq; // triangle 温暖感
+          o2.type = 'sine';     o2.frequency.value = freq * 2;
+          const oG = ac.createGain();
+          oG.gain.value = 0;
+          o1.connect(oG); o2.connect(oG); oG.connect(gain);
+          const base = 0.015;
+          oG.gain.setValueAtTime(0, now);
+          oG.gain.linearRampToValueAtTime(base * 0.52, now + 3.6);
+          oG.gain.linearRampToValueAtTime(base * 0.4, now + 5.2);
+          oG.gain.exponentialRampToValueAtTime(0.0008, now + 8.8);
+          o1.start(now); o2.start(now);
+          o1.stop(now + 9.0); o2.stop(now + 9.0);
+          track(() => { try { o1.stop(); } catch {} try { o2.stop(); } catch {} });
+        });
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(1, now + 3.7);
+        gain.gain.linearRampToValueAtTime(0.75, now + 5.3);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 8.8);
+        timers.push(setTimeout(() => padLoop(idx + 1), 8600));
+      })();
+
+      // —— [MELODY A] F 大调（主音 + 3 度 或 5 度叠音） ——
+      const FM = [174.61, 196.00, 220.00, 233.08, 261.63, 293.66, 329.63, 349.23];
+      const melodyStep = () => {
+        if (!out) return;
+        const idx = Math.floor(Math.random() * FM.length);
+        const idx5 = (idx + 4) % FM.length; // 5 度
+        const idx3 = (idx + 2) % FM.length;  // 3 度
+        const f1 = FM[idx]  * (Math.random() < 0.5 ? 2 : 1);
+        const fH = FM[idx3] * (f1 >= 400 ? 1 : 2);
+        const f5 = FM[idx5] * (f1 >= 400 ? 1 : 2);
+        const now = ac.currentTime;
+        const mkNote = (freq, vol, atk, dec, typ) => {
+          const osc = ac.createOscillator(); const g = ac.createGain();
+          osc.type = typ; osc.frequency.value = freq;
+          g.gain.setValueAtTime(0, now);
+          g.gain.linearRampToValueAtTime(vol, now + atk);
+          g.gain.linearRampToValueAtTime(vol * 0.58, now + atk + 1.8);
+          g.gain.exponentialRampToValueAtTime(0.001, now + dec);
+          osc.connect(g); g.connect(out);
+          osc.start(now); osc.stop(now + dec + 0.15);
+          track(() => { try { osc.stop(); } catch {} });
+        };
+        mkNote(f1, 0.048, 0.8, 6.0, 'triangle');
+        mkNote(fH, 0.028, 0.95, 5.8, 'sine');    // 3 度
+        mkNote(f5, 0.018, 1.05, 5.6, 'sine');    // 5 度（很轻）
+
+        // —— [MELODY B] 对位回声（260ms） ——
+        timers.push(setTimeout(() => {
+          if (!out) return;
+          const idxB = (idx + 3) % FM.length;
+          const fb = FM[idxB] * (Math.random() < 0.5 ? 1 : 2);
+          const t2 = ac.currentTime;
+          const osc = ac.createOscillator(); const g = ac.createGain();
+          osc.type = 'sine'; osc.frequency.value = fb;
+          g.gain.setValueAtTime(0, t2);
+          g.gain.linearRampToValueAtTime(0.025, t2 + 0.9);
+          g.gain.linearRampToValueAtTime(0.017, t2 + 2.4);
+          g.gain.exponentialRampToValueAtTime(0.001, t2 + 5.6);
+          osc.connect(g); g.connect(out);
+          osc.start(t2); osc.stop(t2 + 5.75);
+          track(() => { try { osc.stop(); } catch {} });
+        }, 260));
+
+        timers.push(setTimeout(melodyStep, 1950 + Math.random() * 1550));
       };
-      step();
+      melodyStep();
+
       return () => {
         timers.forEach(clearTimeout);
-        try { bass.stop(); } catch { /* noop */ }
+        liveNodes.forEach(fn => { try { fn && fn(); } catch {} });
       };
     },
 
-    // 04 · Moon Light — G 大调温柔琶音 + 单 G2 底音（非常慢、非常柔）
+    // ========== 04 · Moon Light — G 大调，夜间安静、最悠扬，长 decay，带风铃 ==========
     function moonLight(ac, out) {
       const timers = [];
-      const G_MAJ = [196.00, 220.00, 246.94, 261.63, 293.66, 329.63, 392.00, 440.00];
+      const liveNodes = [];
+      const track = (fn) => liveNodes.push(fn);
+
+      // —— [BASS] G2 + D3，LFO 呼吸（更慢） ——
       const bass = ac.createOscillator();
+      const bass2 = ac.createOscillator();
       const bG = ac.createGain();
-      bass.type = 'sine';
-      bass.frequency.value = 98.0; // G2
+      bass.type = 'sine';  bass.frequency.value = 98.0;
+      bass2.type = 'sine'; bass2.frequency.value = 146.83;
       bG.gain.value = 0;
-      bass.connect(bG); bG.connect(out);
+      bass.connect(bG); bass2.connect(bG); bG.connect(out);
       const now0 = ac.currentTime;
-      bG.gain.linearRampToValueAtTime(0.038, now0 + 4.4);
-      bass.start();
+      bG.gain.linearRampToValueAtTime(0.045, now0 + 5.6);
+      bass.start(); bass2.start();
+      track(() => { try { bass.stop(); } catch {} try { bass2.stop(); } catch {} });
       const lfo = ac.createOscillator();
       const lfoG = ac.createGain();
-      lfo.frequency.value = 0.035;
-      lfoG.gain.value = 0.012;
+      lfo.frequency.value = 0.032;
+      lfoG.gain.value = 0.014;
       lfo.connect(lfoG); lfoG.connect(bG.gain);
       lfo.start();
-      const step = () => {
+      track(() => { try { lfo.stop(); } catch {} });
+
+      // —— [PAD] G → Em → C → D（更慢，9.5s 换一次） ——
+      const padChords = [
+        [49.00, 61.74, 73.42],    // G1/B1/D2
+        [41.20, 49.00, 61.74],    // E1/G1/B1 (Em)
+        [65.41, 82.41, 98.00],    // C2/E2/G2
+        [36.71, 46.25, 55.00],    // D1/F#1/A1
+      ];
+      (function padLoop(idx = 0) {
         if (!out) return;
-        const f = G_MAJ[Math.floor(Math.random() * G_MAJ.length)]
-                     * (Math.random() < 0.55 ? 1 : 2);
+        const chord = padChords[idx % padChords.length];
+        const gain = ac.createGain();
+        gain.connect(out);
+        const now = ac.currentTime;
+        chord.forEach(freq => {
+          const o1 = ac.createOscillator(); const o2 = ac.createOscillator();
+          o1.type = 'sine'; o1.frequency.value = freq;
+          o2.type = 'sine'; o2.frequency.value = freq * 2;
+          const oG = ac.createGain();
+          oG.gain.value = 0;
+          o1.connect(oG); o2.connect(oG); oG.connect(gain);
+          const base = 0.012;
+          oG.gain.setValueAtTime(0, now);
+          oG.gain.linearRampToValueAtTime(base * 0.48, now + 4.2);
+          oG.gain.linearRampToValueAtTime(base * 0.36, now + 6.0);
+          oG.gain.exponentialRampToValueAtTime(0.0006, now + 9.8);
+          o1.start(now); o2.start(now);
+          o1.stop(now + 10.0); o2.stop(now + 10.0);
+          track(() => { try { o1.stop(); } catch {} try { o2.stop(); } catch {} });
+        });
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(1, now + 4.3);
+        gain.gain.linearRampToValueAtTime(0.7, now + 6.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 9.8);
+        timers.push(setTimeout(() => padLoop(idx + 1), 9400));
+      })();
+
+      // —— [MELODY A] G 大调（长 attack，长 decay，最"飘"的感觉） ——
+      const GM = [196.00, 220.00, 246.94, 261.63, 293.66, 329.63, 392.00, 440.00];
+      const melodyStep = () => {
+        if (!out) return;
+        const idx = Math.floor(Math.random() * GM.length);
+        const idx3 = (idx + 2) % GM.length;
+        const f1 = GM[idx] * (Math.random() < 0.5 ? 1 : 2);
+        const fHarm = GM[idx3] * (f1 >= 400 ? 1 : 2);
+        const now = ac.currentTime;
+        const mkNote = (freq, vol, atk, dec, typ) => {
+          const osc = ac.createOscillator(); const g = ac.createGain();
+          osc.type = typ; osc.frequency.value = freq;
+          g.gain.setValueAtTime(0, now);
+          g.gain.linearRampToValueAtTime(vol, now + atk);
+          g.gain.linearRampToValueAtTime(vol * 0.55, now + atk + 2.2);
+          g.gain.exponentialRampToValueAtTime(0.001, now + dec);
+          osc.connect(g); g.connect(out);
+          osc.start(now); osc.stop(now + dec + 0.2);
+          track(() => { try { osc.stop(); } catch {} });
+        };
+        mkNote(f1,    0.05,  1.5, 7.2, 'sine');
+        mkNote(fHarm, 0.027, 1.7, 7.0, 'sine');
+
+        // —— [MELODY B] 回声（320ms，稍高八度） ——
+        timers.push(setTimeout(() => {
+          if (!out) return;
+          const idxB = (idx + 4) % GM.length;
+          const fb = GM[idxB] * (Math.random() < 0.7 ? 2 : 1);
+          const t2 = ac.currentTime;
+          const osc = ac.createOscillator(); const g = ac.createGain();
+          osc.type = 'sine'; osc.frequency.value = fb;
+          g.gain.setValueAtTime(0, t2);
+          g.gain.linearRampToValueAtTime(0.022, t2 + 1.3);
+          g.gain.linearRampToValueAtTime(0.015, t2 + 3.0);
+          g.gain.exponentialRampToValueAtTime(0.001, t2 + 6.6);
+          osc.connect(g); g.connect(out);
+          osc.start(t2); osc.stop(t2 + 6.8);
+          track(() => { try { osc.stop(); } catch {} });
+        }, 320));
+
+        timers.push(setTimeout(melodyStep, 2400 + Math.random() * 1800));
+      };
+      melodyStep();
+
+      // —— [BELL] 夜间风铃（更稀疏、更轻） ——
+      const bellStep = () => {
+        if (!out) return;
+        const BELLS = [783.99, 987.77, 1174.66, 1318.51, 1567.98, 1760.00];
+        const f = BELLS[Math.floor(Math.random() * BELLS.length)];
+        const now = ac.currentTime;
         const osc = ac.createOscillator();
         const g = ac.createGain();
         osc.type = 'sine';
         osc.frequency.value = f;
-        const now = ac.currentTime;
         g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(0.055, now + 1.4);
-        g.gain.linearRampToValueAtTime(0.04, now + 3.4);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 6.8);
+        g.gain.linearRampToValueAtTime(0.007, now + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.0005, now + 3.0);
         osc.connect(g); g.connect(out);
-        osc.start(now); osc.stop(now + 6.9);
-        timers.push(setTimeout(step, 3800 + Math.random() * 2600));
+        osc.start(now); osc.stop(now + 3.1);
+        track(() => { try { osc.stop(); } catch {} });
+        timers.push(setTimeout(bellStep, 7000 + Math.random() * 7000));
       };
-      step();
+      timers.push(setTimeout(bellStep, 5000));
+
       return () => {
         timers.forEach(clearTimeout);
-        try { bass.stop(); } catch { /* noop */ }
-        try { lfo.stop(); } catch { /* noop */ }
+        liveNodes.forEach(fn => { try { fn && fn(); } catch {} });
       };
     },
 
-    // 05 · Quiet Book — D 小调温和单旋律 + 单 D3 底音（最安静的一首）
+    // ========== 05 · Quiet Book — d 小调，最安静，层次精简，音量小 ==========
     function quietBook(ac, out) {
       const timers = [];
-      const DMIN = [146.83, 174.61, 196.00, 220.00, 261.63, 293.66, 329.63, 349.23];
+      const liveNodes = [];
+      const track = (fn) => liveNodes.push(fn);
+
+      // —— [BASS] D3 + A3 ——
       const bass = ac.createOscillator();
+      const bass2 = ac.createOscillator();
       const bG = ac.createGain();
-      bass.type = 'sine';
-      bass.frequency.value = 146.83; // D3
+      bass.type = 'sine';  bass.frequency.value = 146.83;
+      bass2.type = 'sine'; bass2.frequency.value = 220.00;
       bG.gain.value = 0;
-      bass.connect(bG); bG.connect(out);
+      bass.connect(bG); bass2.connect(bG); bG.connect(out);
       const now0 = ac.currentTime;
-      bG.gain.linearRampToValueAtTime(0.042, now0 + 4);
-      bass.start();
-      const step = () => {
+      bG.gain.linearRampToValueAtTime(0.042, now0 + 5);
+      bass.start(); bass2.start();
+      track(() => { try { bass.stop(); } catch {} try { bass2.stop(); } catch {} });
+
+      // —— [PAD] Dm → Bb → F → A ——
+      const padChords = [
+        [73.42, 87.31, 110.00],   // D2/F2/A2
+        [58.27, 73.42, 87.31],    // Bb1/D2/F2
+        [43.65, 55.00, 65.41],    // F1/A1/C2
+        [55.00, 69.30, 82.41],    // A1/C#2/E2
+      ];
+      (function padLoop(idx = 0) {
         if (!out) return;
-        const f = DMIN[Math.floor(Math.random() * DMIN.length)]
-                    * (Math.random() < 0.65 ? 1 : 2);
-        const osc = ac.createOscillator();
-        const g = ac.createGain();
-        osc.type = 'triangle';
-        osc.frequency.value = f;
+        const chord = padChords[idx % padChords.length];
+        const gain = ac.createGain();
+        gain.connect(out);
         const now = ac.currentTime;
-        g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(0.04, now + 1.2);
-        g.gain.linearRampToValueAtTime(0.03, now + 2.8);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 6.2);
-        osc.connect(g); g.connect(out);
-        osc.start(now); osc.stop(now + 6.3);
-        timers.push(setTimeout(step, 3400 + Math.random() * 2800));
+        chord.forEach(freq => {
+          const o1 = ac.createOscillator();
+          o1.type = 'sine'; o1.frequency.value = freq;
+          const oG = ac.createGain();
+          oG.gain.value = 0;
+          o1.connect(oG); oG.connect(gain);
+          const base = 0.011; // 最安静：pad 更小
+          oG.gain.setValueAtTime(0, now);
+          oG.gain.linearRampToValueAtTime(base * 0.5, now + 4);
+          oG.gain.linearRampToValueAtTime(base * 0.38, now + 5.8);
+          oG.gain.exponentialRampToValueAtTime(0.0006, now + 9.6);
+          o1.start(now);
+          o1.stop(now + 9.8);
+          track(() => { try { o1.stop(); } catch {} });
+        });
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(1, now + 4.1);
+        gain.gain.linearRampToValueAtTime(0.7, now + 5.9);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 9.6);
+        timers.push(setTimeout(() => padLoop(idx + 1), 9200));
+      })();
+
+      // —— [MELODY A] d 自然小调（更稀疏、音量稍小） ——
+      const DMIN = [146.83, 164.81, 174.61, 196.00, 220.00, 233.08, 261.63, 293.66];
+      const melodyStep = () => {
+        if (!out) return;
+        const idx = Math.floor(Math.random() * DMIN.length);
+        const idx3 = (idx + 2) % DMIN.length;
+        const f1 = DMIN[idx] * (Math.random() < 0.6 ? 2 : 1);
+        const fHarm = DMIN[idx3] * (f1 >= 400 ? 1 : 2);
+        const now = ac.currentTime;
+        const mkNote = (freq, vol, atk, dec, typ) => {
+          const osc = ac.createOscillator(); const g = ac.createGain();
+          osc.type = typ; osc.frequency.value = freq;
+          g.gain.setValueAtTime(0, now);
+          g.gain.linearRampToValueAtTime(vol, now + atk);
+          g.gain.linearRampToValueAtTime(vol * 0.55, now + atk + 2.2);
+          g.gain.exponentialRampToValueAtTime(0.001, now + dec);
+          osc.connect(g); g.connect(out);
+          osc.start(now); osc.stop(now + dec + 0.15);
+          track(() => { try { osc.stop(); } catch {} });
+        };
+        mkNote(f1,    0.042, 1.25, 6.8, 'triangle');
+        mkNote(fHarm, 0.022, 1.4, 6.6, 'sine');
+
+        // —— [MELODY B] 回声（300ms）更安静 ——
+        timers.push(setTimeout(() => {
+          if (!out) return;
+          const idxB = (idx + 3) % DMIN.length;
+          const fb = DMIN[idxB] * (Math.random() < 0.5 ? 1 : 2);
+          const t2 = ac.currentTime;
+          const osc = ac.createOscillator(); const g = ac.createGain();
+          osc.type = 'sine'; osc.frequency.value = fb;
+          g.gain.setValueAtTime(0, t2);
+          g.gain.linearRampToValueAtTime(0.02, t2 + 1.1);
+          g.gain.linearRampToValueAtTime(0.013, t2 + 2.8);
+          g.gain.exponentialRampToValueAtTime(0.001, t2 + 6.2);
+          osc.connect(g); g.connect(out);
+          osc.start(t2); osc.stop(t2 + 6.35);
+          track(() => { try { osc.stop(); } catch {} });
+        }, 300));
+
+        timers.push(setTimeout(melodyStep, 2500 + Math.random() * 2000));
       };
-      step();
+      melodyStep();
+
       return () => {
         timers.forEach(clearTimeout);
-        try { bass.stop(); } catch { /* noop */ }
+        liveNodes.forEach(fn => { try { fn && fn(); } catch {} });
       };
     },
   ];
