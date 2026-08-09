@@ -104,23 +104,26 @@ const Storage = (() => {
     }
   }
 
-  /** 迁移旧 dailyTodo：补全 date/items/prefs 子字段；跨日保留 prefs 但清空 items */
+  /** 迁移旧 dailyTodo：补全 date/items/prefs 子字段；跨日保留 prefs + 循环 items 并重置全部为未完成 */
   function migrateDaily(raw) {
     const def = defaultDailyTodo();
     if (!raw || typeof raw !== 'object') return def;
     const today = todayKey();
+    const storedDate = typeof raw.date === 'string' ? raw.date : today;
+    const rollover = storedDate !== today;
+
     const items = Array.isArray(raw.items)
       ? raw.items.filter((it) => it && typeof it.text === 'string').map((it) => ({
           id: it.id || `d_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           text: String(it.text),
-          done: !!it.done,
+          done: rollover ? false : !!it.done, // 跨日自动重置为未完成 → 第二天循环再次出现
           createdAt: it.createdAt || Date.now(),
           x: typeof it.x === 'number' ? it.x : null,
           y: typeof it.y === 'number' ? it.y : null,
           rotation: typeof it.rotation === 'number' ? it.rotation : (Math.random() - 0.5) * 4,
           color: ['beige', 'blue', 'pink'].includes(it.color) ? it.color : 'beige',
           note: typeof it.note === 'string' ? it.note : '',
-          pinned: !!it.pinned,
+          pinned: rollover ? false : !!it.pinned, // 跨日自动取下大头针
         }))
       : [];
     const rawPrefs = raw.prefs && typeof raw.prefs === 'object' ? { ...raw.prefs } : {};
@@ -128,11 +131,9 @@ const Storage = (() => {
     delete rawPrefs.fontSizeScale;
     if (!['beige', 'blue', 'pink'].includes(rawPrefs.color)) delete rawPrefs.color;
     const prefs = { ...defaultDailyPrefs(), ...rawPrefs };
-    // 跨日：items 清空（每天自动刷新），prefs 保留
-    const storedDate = typeof raw.date === 'string' ? raw.date : today;
     return {
       date: today,
-      items: storedDate === today ? items : [],
+      items, // 跨日也保留 items，done / pinned 在上面已重置
       prefs,
     };
   }

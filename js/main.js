@@ -225,7 +225,6 @@
     const s = Math.max(1, Math.min(MAX_W / BASE_W, w0 / BASE_W));
     note.style.setProperty('--note-scale', s.toFixed(3));
 
-    const delLabel = I18n.t('dailyDelete');
     const checkLabel = I18n.t(item.done ? 'markUndone' : 'markDone');
 
     note.innerHTML = `
@@ -244,14 +243,6 @@
               wrap="soft">${escapeHtml(item.note || '')}</textarea>
           </div>
         </div>
-        <button type="button" class="daily-note-delete" aria-label="${escapeHtml(delLabel)}" title="${escapeHtml(delLabel)}">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round">
-            <path d="M3 4.5 h10"/>
-            <path d="M5 4.5 V3 a1 1 0 0 1 1 -1 h4 a1 1 0 0 1 1 1 v1.5"/>
-            <path d="M4.5 4.5 L5 13.6 a1.2 1.2 0 0 0 1.2 1.1 h3.6 a1.2 1.2 0 0 0 1.2 -1.1 L11.5 4.5"/>
-            <path d="M7 7 v5 M10 7 v5"/>
-          </svg>
-        </button>
       </div>
       <span class="note-watermark" style="--wm-align:center">· DAILY · 今日 ·</span>
       <span class="note-pin${item.pinned ? ' pinned' : ''}" aria-hidden="true"></span>
@@ -273,14 +264,8 @@
       DailySidebar.togglePin(item.id);
     });
 
-    // 永久删除
-    note.querySelector('.daily-note-delete').addEventListener('click', (e) => {
-      e.stopPropagation();
-      DailySidebar.deleteItem(item.id);
-    });
-
     note.addEventListener('click', (e) => {
-      if (e.target.closest('.task-checkbox, .daily-note-delete, .resize-handle, .task-note-input, .note-pin')) return;
+      if (e.target.closest('.task-checkbox, .resize-handle, .task-note-input, .note-pin')) return;
       bringToFront(item.id, 'daily');
       AudioFX.play('paper');
     });
@@ -859,7 +844,14 @@
       const today = Storage.todayKey();
       if (data.dailyTodo.date !== today) {
         data.dailyTodo.date = today;
-        data.dailyTodo.items = [];
+        // 跨日：清空旧的 items 重置（保留条目内容，重置为未完成 + 取消大头针固定，第二天循环再次出现）
+        data.dailyTodo.items = data.dailyTodo.items.map((it) => ({
+          ...it,
+          done: false,
+          pinned: false,
+          x: (it.x == null) ? null : it.x,
+          y: (it.y == null) ? null : it.y,
+        }));
         persist();
         render();
         updateHint();
